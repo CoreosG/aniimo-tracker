@@ -896,6 +896,7 @@ PT_BR.update({
     'Minimap identifies your layout automatically. Press ':'O minimapa identifica o layout automaticamente. Pressione ',
     ' to confirm or correct it.':' para confirmar ou corrigir.',
     ' to confirm':' para confirmar',
+    'Outside dungeon':'Fora da masmorra',
     'Outside dungeon · waiting for minimap':'Fora da masmorra · aguardando minimapa',
     'Minimap confirmed':'Minimapa confirmado',
     'Comparing corridors':'Comparando corredores',

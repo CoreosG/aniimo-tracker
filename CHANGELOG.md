@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-10-21
+
+### Fixed
+
+- Show one navigation status outside a dungeon instead of repeating
+  “waiting for minimap” and “waiting for map” in the overlay. Keep run status
+  and capture/save hints visible in English and PT-BR.
+
 ## [0.3.5] - 2026-10-21
 
 ### Added
@@ -129,7 +137,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.2...v0.3.3

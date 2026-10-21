@@ -657,7 +657,7 @@ class SanctumPanel:
         image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · {self.app.shortcut_hint("map")} to confirm'
-        if self.outdoors and not preview:label='Outside dungeon · waiting for minimap'
+        if self.outdoors and not preview:label='Outside dungeon'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         if self.always_status.get() and not self.app.ledger.active_start() and not preview:
