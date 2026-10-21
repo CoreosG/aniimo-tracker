@@ -17,6 +17,7 @@ from PIL import Image, ImageGrab, ImageTk
 from sanctum import Detector, LAYOUTS, WatchSession, SITE_URL
 from windows_capture import monitors, binding_down, capture_bounds, capture_image
 from map_engine import MapEngine,MapLibrary
+from minimap_recognition import MinimapRecognizer
 from map_overlay import MapOverlay
 from shortcut_keys import ObservedKeyTaps
 from map_catalog import DIFFICULTIES,layouts_for
@@ -81,6 +82,8 @@ class SanctumPanel:
         self.last_proposal, self.stable_count = None, 0
         self.engine,self.player,self.position_time = None,None,0
         self.maps=MapLibrary(self.difficulty.get())
+        self.recognizer=None;self.recognition_key=None
+        self.outdoors=False;self.outdoor_votes=0
         self.app.auto_maps.difficulty=self.difficulty.get()
         self.next_minimap,self.overlay_dirty = 0,True
         self.last_capture_status=''
@@ -89,6 +92,7 @@ class SanctumPanel:
         self.map_feedback='Identifying map…'
         self.capture_status=tk.BooleanVar(value=self.config.get('capture_status',True))
         self.always_status=tk.BooleanVar(value=self.config.get('always_status',False))
+        self.automatic_minimap=tk.BooleanVar(value=self.config.get('automatic_minimap',True))
         self.unconfirmed_trials=tk.BooleanVar(value=self.config.get('unconfirmed_trials',False))
         self.next_screen_probe=0
         self.overlay_enabled=tk.BooleanVar(value=self.config.get('overlay_enabled',True))
@@ -205,6 +209,7 @@ class SanctumPanel:
         ttk.Button(options,text='Reset overlay position',command=self.reset_overlay_position).pack(fill='x',pady=(12,0))
         section=self.map_sections['Tools']
         options=card('TOOLS & CALIBRATION')
+        ttk.Checkbutton(options,text='Identify from minimap',variable=self.automatic_minimap,command=self.save_preferences).pack(anchor='w',pady=6)
         ttk.Checkbutton(options,text='Party budget · carry 1 key',variable=self.party,command=self.save_party).pack(anchor='w',pady=6)
         for title,command in [('Set minimap area',self.set_minimap),('Import map image',self.import_map),('Calibrate markers',self.calibrate),('Open local simulator',self.open_simulator)]:
             ttk.Button(options,text=title,command=command).pack(fill='x',pady=3)
@@ -242,6 +247,7 @@ class SanctumPanel:
         self.write_config();self.tick()
 
     def change_difficulty(self):
+        self.outdoors=False;self.outdoor_votes=0
         difficulty=self.difficulty.get()
         self.detector.difficulty=self.maps.difficulty=self.app.auto_maps.difficulty=difficulty
         self.context_serial+=1;self.generation+=1
@@ -260,7 +266,7 @@ class SanctumPanel:
 
     def update_shortcut_hints(self):
         key=self.app.shortcut_hint('map')
-        self.instructions_label.configure(text=f'Enter {self.difficulty.get()} and open the game map ({key}) with both portals visible. After confirmation, close it; the overlay follows the minimap.')
+        self.instructions_label.configure(text=f'Minimap identifies your layout automatically. Press {key} to confirm or correct it.')
         self.overlay_check.configure(text=f'Show overlay ({self.app.shortcut_hint("overlay")})')
 
     def save_overlay_position(self,position):
@@ -310,7 +316,7 @@ class SanctumPanel:
         self.config.update(enabled=self.enabled.get(),party=self.party.get(),route_keys=int(self.keys.get()),
             standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),route_rooms=int(self.route_rooms.get()),route_exit=self.route_exit.get(),legend=self.legend.get(),icons={k:v.get() for k,v in self.icon_vars.items()},
             overlay_enabled=self.overlay_enabled.get(),opacity=round(self.opacity.get()),overlay_size=round(self.overlay_size.get()),
-            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),always_status=self.always_status.get(),unconfirmed_trials=self.unconfirmed_trials.get())
+            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),always_status=self.always_status.get(),unconfirmed_trials=self.unconfirmed_trials.get(),automatic_minimap=self.automatic_minimap.get())
         self.config['position_interval']=1.5 if self.refresh_mode.get()=='Low CPU (1.5s)' else .7
         self.overlay_dirty=True
         if hasattr(self,'count_spins'):
@@ -362,6 +368,7 @@ class SanctumPanel:
         if run_id is not None:self.standalone=False
         context_id=run_id if run_id is not None else 'map-only' if self.standalone else None
         if self.session.context_id != context_id:
+            self.outdoors=False;self.outdoor_votes=0
             restore=context_id is not None and context_id!='map-only' and self.config.get('watch_context',self.config.get('run_id'))==context_id and self.config.get('map_confirmed',False)
             saved_layout=self.config.get('layout') if restore else None
             saved_reading=self.config.get('reading',{}) if restore else {}
@@ -528,6 +535,25 @@ class SanctumPanel:
                 self.map_open=False
                 self.scan_until=0
             if reading.get('minimap'):
+                automatic=reading.get('automatic') or {}
+                if automatic.get('kind')=='outside':
+                    self.outdoor_votes=min(2,self.outdoor_votes+1)
+                    self.player=None;self.position_time=0
+                    if self.outdoor_votes>=2:self.outdoors=True
+                    self.map_feedback='Outside dungeon · waiting for minimap'
+                    self.status.set(self.map_feedback)
+                    continue
+                if automatic:
+                    self.outdoor_votes=0
+                    if automatic.get('kind')=='match' and (not self.session.map_confirmed or self.outdoors):
+                        self.outdoors=False
+                        self.accept_layout(automatic['layout'],automatic)
+                        self.player=self.engine.position_from_reference(automatic['reference_position'])
+                        self.position_time=now
+                        self.map_feedback=f'{self.difficulty.get()} {self.engine.layout} · Minimap confirmed'
+                        self.status.set(self.map_feedback)
+                    elif not self.session.map_confirmed:
+                        self.status.set(automatic.get('reason','Comparing corridors'))
                 if not self.session.can_track_minimap:
                     continue
                 if reading.get('match'):
@@ -622,12 +648,13 @@ class SanctumPanel:
         position=[max(screen[0]+12,min(position[0],screen[2]-size-12)),max(screen[1]+12,min(position[1],screen[3]-size-88))]
         if self.overlay.movable:self.overlay.position=tuple(position)
         engine=(self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)) if self.assets_ready else None
-        draw_map=not header_only and engine is not None and (preview or self.session.map_confirmed or self.overlay.movable)
+        draw_map=not header_only and engine is not None and (preview or not self.outdoors and self.session.map_confirmed or self.overlay.movable)
         live=time.monotonic()-self.position_time<2
         player=(self.player or [50,50]) if preview else self.player
         image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
-        if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
+        if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · {self.app.shortcut_hint("map")} to confirm'
+        if self.outdoors and not preview:label='Outside dungeon · waiting for minimap'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         if self.always_status.get() and not self.app.ledger.active_start() and not preview:
@@ -692,6 +719,14 @@ class SanctumPanel:
         detector=self.detector
         maps=self.maps
         confirmed=self.session.map_confirmed
+        recognition_key=(self.context_serial,self.generation,self.difficulty.get(),self.automatic_minimap.get())
+        if self.recognition_key!=recognition_key:
+            self.recognition_key=recognition_key
+            self.recognizer=MinimapRecognizer.from_assets(ASSETS,layouts_for(self.difficulty.get())) if self.automatic_minimap.get() else None
+        recognizer=self.recognizer
+        outdoors=self.outdoors
+        automatic_enabled=self.automatic_minimap.get()
+        map_key=self.app.shortcut_hint('map')
         region=self.config.get('minimap_region')
         previous=list(self.player) if self.player and time.monotonic()-self.position_time<3 else None
         def work():
@@ -702,11 +737,13 @@ class SanctumPanel:
                 map_screen=detector.is_map_screen(image)
                 if map_screen or explicit:
                     reading=detector.detect(image)
-                elif confirmed:
-                    match=engine.match_minimap(image,region,previous=previous) if engine else maps.identify(image,region)
-                    reading=dict(minimap=True,match=match)
                 else:
-                    reading=dict(candidates=[],reason='Waiting for the full game map · no layout confirmed.')
+                    automatic=recognizer.observe(image,region) if recognizer else dict(kind='searching',reason=f'Update map pack for automatic minimap recognition · {map_key} still works' if automatic_enabled else f'Automatic minimap recognition off · press {map_key} to confirm')
+                    outside=automatic.get('kind')=='outside'
+                    match=engine.match_minimap(image,region,previous=previous) if confirmed and engine and not outside and not outdoors else None
+                    if not match and confirmed and engine and not outdoors and automatic.get('kind')=='match' and automatic['layout']==engine.layout:
+                        match=dict(player=engine.position_from_reference(automatic['reference_position']),confidence=automatic['confidence'],method='corridors',inliers=0)
+                    reading=dict(minimap=True,match=match,automatic=automatic)
                 reading['map_screen']=map_screen
                 reading['requested']=requested
                 reading['explicit'] = explicit
@@ -887,11 +924,16 @@ class SanctumPanel:
             self.status.set('Download the map pack in Map & routes first.');return
         if layout in reading.get('candidates',[]) and 'orange' in reading and 'blue' in reading:
             self.session.confirm_map()
+            self.outdoors=False;self.outdoor_votes=0
             self.map_feedback=f'{self.difficulty.get()} {layout} · Map confirmed'
+        elif reading.get('kind')=='match' and reading.get('method')=='temporal-corridors' and reading.get('layout')==layout:
+            self.session.confirm_map()
+            self.outdoors=False;self.outdoor_votes=0
         changed=not self.engine or self.engine.layout!=layout
         if changed:self.engine=self.maps.model(layout)
         self.layout.set(str(layout));self.config['layout']=layout
         position=self.engine.position_from_map(reading)
+        if reading.get('reference_position') is not None:position=self.engine.position_from_reference(reading['reference_position'])
         if position:
             self.player=position;self.position_time=0
         if hasattr(self.app,'party'):

@@ -883,3 +883,24 @@ Em Configurações > Armazenamento de capturas, escolha quantas partidas devem m
 '''
 
 PT_BR['Start run / capture']='Iniciar partida / capturar'
+
+PT_BR.update({
+    'Update map pack to enable automatic minimap identification. Existing M recognition still works.':'Atualize os mapas para identificar pelo minimapa. O reconhecimento com M continua funcionando.',
+    'Update map pack for automatic minimap recognition · ':'Atualize os mapas para identificar pelo minimapa · ',
+    ' still works':' continua funcionando',
+    'Automatic minimap recognition off · press ':'Identificação pelo minimapa desativada · pressione ',
+    'Identify from minimap':'Identificar pelo minimapa',
+    'Update map pack':'Atualizar pacote de mapas',
+    'Automatic minimap references ready':'Referências do minimapa prontas',
+    'Minimap identifies your layout automatically. Press ':'O minimapa identifica o layout automaticamente. Pressione ',
+    ' to confirm or correct it.':' para confirmar ou corrigir.',
+    ' to confirm':' para confirmar',
+    'Outside dungeon · waiting for minimap':'Fora da masmorra · aguardando minimapa',
+    'Minimap confirmed':'Minimapa confirmado',
+    'Comparing corridors':'Comparando corredores',
+    'Waiting for clearer dungeon corridors':'Aguardando corredores mais visíveis',
+    'Waiting for minimap':'Aguardando minimapa',
+    'Outdoor minimap detected':'Minimapa externo detectado',
+    'Update map pack for automatic minimap recognition · M still works':'Atualize os mapas para identificar pelo minimapa · M continua funcionando',
+    'Automatic minimap recognition off · press M to confirm':'Identificação pelo minimapa desativada · pressione M para confirmar',
+})

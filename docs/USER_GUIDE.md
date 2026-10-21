@@ -13,7 +13,8 @@ Português (Brasil) are available in Settings.
 - Forecast remaining runs, tickets, playtime and the per-run break-even budget,
   including keys and gear costs. Skipped play days retain your ticket stock.
 - Explore loot, spending, wallet checkpoints, points and tickets on graphs.
-- Recognize Lost Sanctum layouts from the full game map and follow the player
+- Recognize Lost Sanctum layouts automatically from minimap corridors or confirm
+  with the full game map, and follow the player
   through screen-based minimap matching. Plan routes from both entrances for
   keys, eggs, both, rich rooms or trials; choose a preferred exit while keeping
   both entrance routes visible. Toggle room icons, monsters and the legend
@@ -169,7 +170,7 @@ Capture crops the visible desktop; it does **not** reconstruct game pixels hidde
 behind another window.
 
 Changing the capture target clears custom OCR/minimap reading areas and requires
-a fresh full-map confirmation. When older monitor-based settings are first
+fresh minimap evidence or a full-map confirmation. When older monitor-based settings are first
 migrated to client-area capture, their custom reading areas are reset too.
 
 Default portal matching normalizes to a 1080p reference, with regression fixtures
@@ -223,7 +224,7 @@ Open **Party**, save a username, and create a party or enter a teammate's
 must use the same server. Joining does not start a tracked run or alter stats;
 start your run or map-only tracking to display party navigation.
 
-The first confident full-map identification is shared. A strictly higher
+The first confident portal or repeated minimap identification is shared. A strictly higher
 evidence score replaces it for everyone. Each player continues recognizing their
 own minimap locally. Circles show names and distinct colors; a dim center and
 "last known" label indicate a stale position, which disappears after 30 seconds.
@@ -311,3 +312,19 @@ See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 This repository is public for inspection and feedback. No open-source license
 has been selected for the original tracker code yet. Third-party content always
 remains subject to its owners' terms.
+
+
+## Automatic minimap identification
+
+Start a run or map-only tracking and enter a dungeon. Recognition compares
+corridors across the selected difficulty's layouts, checks outdoor terrain and
+an island reference, then waits for three consistent, unambiguous observations.
+Shared rooms stay undecided; move to reveal more corridors or press **M** to
+confirm or correct. A full-map portal reading remains authoritative in the
+current dungeon. Returning outdoors hides dungeon navigation without changing
+run records. Party evidence is shared, with strong portal readings ranked higher.
+
+Older installs show **Update map pack** for the extra reference images. Downloads
+come directly from MOANIIMO. Recognition stays local, runs only while tracking
+is active and the game is focused, and sends no screenshots to the party server.
+Disable **Map & routes → Tools → Identify from minimap** to use M only.

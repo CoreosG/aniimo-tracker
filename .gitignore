@@ -10,6 +10,7 @@ dist/
 # Downloaded third-party map data/artwork and optional website mirror
 assets/simulator/
 assets/map-*.webp
+assets/outdoor-minimap.webp
 
 # Player data, captures and local configuration must never be published
 *.db

@@ -1762,6 +1762,16 @@ if __name__ == '__main__':
                     if real['candidates']!=[40] or not minimap or minimap['layout']!=37:
                         raise RuntimeError('Packaged real screenshot recognition failed')
                     real_checks=dict(real_map_layout=40,minimap_layout=37)
+                    from minimap_recognition import MinimapRecognizer
+                    from asset_paths import ASSETS
+                    from map_catalog import HIGH_TIER
+                    automatic=MinimapRecognizer.from_assets(ASSETS,HIGH_TIER)
+                    if automatic is None:raise RuntimeError('Automatic minimap references missing')
+                    with Image.open(folder/'actual-minimap.png') as frame:
+                        for i in range(3):automatic_result=automatic.observe(frame,now=i*.8)
+                    if automatic_result.get('kind')!='match' or automatic_result.get('layout')!=37:
+                        raise RuntimeError('Automatic minimap identification failed')
+                    real_checks['automatic_minimap']=True
                     if (folder/'actual-M-map-32.png').exists():
                         horizontal=Detector(Path(temp)/'horizontal-vision').detect(Image.open(folder/'actual-M-map-32.png'))
                         if horizontal['candidates']!=[32]:

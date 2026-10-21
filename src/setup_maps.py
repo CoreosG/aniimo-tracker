@@ -139,9 +139,7 @@ def install(destination, progress=print):
         image = fetch(SITE + f'/assets/lost-sanctum/maps/200{layout}-full.webp')
         save(simulator / f'assets/lost-sanctum/maps/200{layout}-full.webp', image)
         progress(f'Installed layout {layout}')
-    # These unannotated references match the game floor texture used by SIFT.
-    for layout in HIGH_TIER:
-        save(destination / f'map-{layout}.webp', fetch(f'https://aniimo.kr/map/sanctums/sanctum_{layout}.webp'))
+    install_recognition(destination,progress)
     save(simulator / 'SOURCE.txt', (
         'Locally downloaded map data and rendered maps from ' + PAGE + '\n'
         'Game floor references: https://aniimo.kr/en/palace-finder\n'
@@ -149,6 +147,17 @@ def install(destination, progress=print):
         'Downloaded files are excluded from this Git repository.\n'
     ).encode('utf-8'))
     progress('Map pack ready. Open the game map to begin.')
+
+
+def install_recognition(destination,progress=print):
+    """Upgrade old packs without downloading their route data again."""
+    destination=Path(destination)
+    for layout in ALL_LAYOUTS:
+        path=destination/f'map-{layout}.webp'
+        if not path.is_file():save(path,fetch(f'https://aniimo.kr/map/sanctums/sanctum_{layout}.webp'))
+    outdoor=destination/'outdoor-minimap.webp'
+    if not outdoor.is_file():save(outdoor,fetch('https://aniimo.kr/map/egg_heist_team/minimap_ref.webp'))
+    progress('Automatic minimap references ready')
 
 
 if __name__ == '__main__':

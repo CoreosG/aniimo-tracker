@@ -30,12 +30,18 @@
 | Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
 | Egg Heist result | **Ctrl + Shift + F8** | Read points gained or lost |
 | Results ready | **Ctrl + Shift + F9** | Save the run; loot is optional |
-| During navigation | **M** | Identify the map from the game’s full map |
+| During navigation | **M** | Confirm or correct the automatically identified layout |
 | During navigation | **;** | Show or hide the overlay |
 
 All shortcuts are customizable. You can also start without a balance, enter a run manually, record only points, or use **map-only tracking**.
 
 Already using map-only tracking? Capturing Inventory starts a run with the observed balance. Capturing a result switches to result entry. You can save points-only results repeatedly without starting a run first.
+
+**Automatic map detection:** Start a run or the map tracker and enter a dungeon.
+The minimap identifies the layout after several consistent corridor readings.
+Repeated rooms stay undecided: move a little or press **M** to confirm. Outdoor
+terrain and an island reference help reject lobby/outdoor matches. If prompted,
+click **Update map pack** once. Disable **Tools → Identify from minimap** to use M only.
 
 <details>
 <summary><b>See the capture screens</b></summary>

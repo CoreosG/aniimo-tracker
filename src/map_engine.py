@@ -77,6 +77,9 @@ class MapEngine:
         rb=np.array(anchors['blue'])*np.array(self.reference.size)
         return self.position_from_map({'orange':ra,'blue':rb,'player':q})
 
+    def position_from_reference(self,normalized):
+        return self._reference_position(np.asarray(normalized)*self.reference.size)
+
     @staticmethod
     def _gray(image):
         gray=cv2.cvtColor(np.asarray(image.convert('RGB')),cv2.COLOR_RGB2GRAY)

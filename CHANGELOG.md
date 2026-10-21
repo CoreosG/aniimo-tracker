@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-21
+
+### Added
+
+- Automatic minimap layout identification using compact corridor masks,
+  repeated evidence, layout/position ambiguity rejection and outdoor references.
+- Identify from minimap toggle and a small map-pack upgrade for older installs.
+- Reference maps and player alignment for all supported difficulty pools.
+
+### Changed
+
+- Keep M as confirmation/correction and retain feature-based position tracking.
+- Share confirmed minimap evidence with parties below strong portal evidence.
+- Hide dungeon navigation after outdoor detection without changing run records.
+- Credit MOANIIMO for the detection approach; update English/PT-BR help.
+
 ## [0.3.4] - 2026-10-21
 
 ### Added
@@ -108,7 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.1...v0.3.2

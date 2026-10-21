@@ -28,6 +28,12 @@ def username(value):
 
 
 def evidence_score(reading):
+    if reading.get('kind')=='match' and reading.get('method')=='temporal-corridors':
+        values=[reading.get('confidence'),reading.get('margin'),reading.get('streak')]
+        if any(type(n) not in (int,float) or not math.isfinite(n) for n in values):return 0.
+        score,margin,streak=values
+        # Keep strong full-map portal observations above a minimap inference.
+        return .8 if .8<=score<=1 and margin>=.012 and streak>=3 else 0.
     if not reading.get('map_screen') or len(reading.get('candidates', [])) != 1: return 0.
     scores = reading.get('scores', {})
     values = [scores.get(kind, 0.) for kind in ('orange', 'blue')]

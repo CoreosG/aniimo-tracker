@@ -12,7 +12,7 @@ ASSETS=Path(os.environ['ANIIMO_MAP_ASSETS']) if os.environ.get('ANIIMO_MAP_ASSET
 if ASSETS!=BUNDLED:
     ASSETS.mkdir(parents=True,exist_ok=True)
     for name in ('blue.png','orange.png','orange-full.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json'):
-        if not (ASSETS/name).exists():shutil.copyfile(BUNDLED/name,ASSETS/name)
+        if name=='maps.json' or not (ASSETS/name).exists():shutil.copyfile(BUNDLED/name,ASSETS/name)
 
 
 def maps_ready():
@@ -20,3 +20,8 @@ def maps_ready():
                for layout in ALL_LAYOUTS for kind in ('layout','route')) and all(
         (ASSETS/'simulator'/f'assets/lost-sanctum/maps/200{layout}-full.webp').is_file()
         for layout in ALL_LAYOUTS) and all((ASSETS/f'map-{layout}.webp').is_file() for layout in HIGH_TIER)
+
+
+def recognition_ready():
+    return (ASSETS/'outdoor-minimap.webp').is_file() and all(
+        (ASSETS/f'map-{layout}.webp').is_file() for layout in ALL_LAYOUTS)

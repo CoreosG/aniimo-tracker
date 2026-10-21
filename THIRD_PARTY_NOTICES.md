@@ -7,7 +7,7 @@ and visual references provided by the following projects:
 | Source | Local files | Use |
 | --- | --- | --- |
 | [AniimoTools](https://aniimotools.dev/map/lost-sanctum/) | `assets/simulator/layout-*.json`, `route-*.json`, `assets/lost-sanctum/maps/*.webp` | Layout metadata, room positions, routing graph and rendered floor plans |
-| [MOANIIMO](https://aniimo.kr/en/palace-finder) | `assets/map-*.webp`; alignment coordinates in `assets/maps.json` | Floor texture references and portal alignment |
+| [MOANIIMO](https://aniimo.kr/en/palace-finder) | `assets/map-*.webp`, `assets/outdoor-minimap.webp`; alignment coordinates in `assets/maps.json` | Floor texture references, outdoor rejection and portal alignment |
 | Aniimo, Pawprint Studio / FunPlus | Small `.png` marker crops in `assets/` | Recognizing the game UI and player marker |
 
 Downloaded map files and any separately installed website mirror are ignored by
@@ -15,6 +15,12 @@ Git and are not hosted in this repository. Run `src/setup_maps.py` to acquire th
 map files directly from their source sites. This project does not claim
 ownership of them or grant redistribution rights. The optional original
 simulator remains credited to AniimoTools.
+
+MOANIIMO's browser finder also inspired corridor floor/wall matching, accumulated
+layout evidence and outdoor rejection. The tracker implements these ideas in
+Python/NumPy/OpenCV, alongside its existing feature registration and full-map
+portal recognition. Upstream JavaScript workers and website analytics are not
+included or executed. All screen analysis remains local to the tracker.
 
 Game names, artwork and trademarks belong to their respective owners. The
 small recognition crops contain only UI markers, without player identifiers.

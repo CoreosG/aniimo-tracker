@@ -9,7 +9,7 @@ The desktop program is a standalone Python application under `src/`. Keeping its
 | Desktop | `app.py`, `*_panel.py`, `tutorial.py` | Tk interface and local workflows |
 | Run ledger | `tracker_core.py`, `analytics.py`, `balance_history.py` | SQLite history, authoritative wallet checkpoints, forecasts and chart data |
 | Capture | `windows_capture.py`, `readings.py`, `screen_kind.py` | Monitor capture, local Windows OCR and conservative reading classification |
-| Navigation | `sanctum.py`, `map_engine.py`, `map_overlay.py` | Full-map identification, minimap registration, route calculation and overlay |
+| Navigation | `sanctum.py`, `minimap_recognition.py`, `map_engine.py`, `map_overlay.py` | Portal/corridor identification, minimap registration, route calculation and overlay |
 | Party | `party_client.py`, `party_panel.py`, `party_server.py` | Ephemeral shared navigation, positions and run boundaries |
 | Distribution | `asset_paths.py`, `setup_maps.py`, `update_checker.py` | Local map installation and user-initiated release downloads |
 
@@ -36,3 +36,11 @@ model's bounded cache, so global cache keys cannot prolong an evicted model's
 lifetime. Active callers may keep their current model even after library eviction.
 Localization removes per-widget references, variable traces and Tcl commands on
 widget destruction; closed image canvases must not remain reachable through it.
+
+Automatic layout recognition owns compact floor masks and temporal evidence for
+one navigation context. Outdoor RGB-reference matching precedes dungeon acceptance.
+Repeated rooms, weak observations and missing HUDs cannot select a layout. Context,
+difficulty and capture-target changes discard prior recognition state; scan results
+still pass the generation check before affecting the UI. M portal readings retain
+authority within a dungeon. Confirmed feature registration remains the preferred
+position reading, with an unambiguous corridor position as fallback.

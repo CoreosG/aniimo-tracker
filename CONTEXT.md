@@ -26,9 +26,11 @@
 
 **Shared run**: One party navigation session. A new shared run discards the previous layout and all player locations without changing anyone's saved runs.
 
-**Layout evidence**: A local full-map recognition result for a single layout, with an evidence score. Receiving someone else's evidence does not create new evidence of your own.
+**Layout evidence**: A local full-map portal reading or repeated, unambiguous minimap corridor observations identifying one layout. Receiving someone else's evidence does not create new evidence of your own.
 
-**Evidence score**: The weaker portal-template match, reduced when a portal is partly covered. Higher scores replace weaker shared layout evidence; equal scores keep the current choice. This is a comparison score, not a probability.
+**Evidence score**: The weaker portal-template match, reduced when a portal is partly covered, or a capped score for confirmed minimap observations. Higher scores replace weaker shared layout evidence; equal scores keep the current choice. This is a comparison score, not a probability.
+
+**Outdoor observation**: Local evidence that the player is outside a dungeon. It suppresses dungeon navigation without ending, saving or starting a ledger run. Returning to a dungeon requires fresh layout evidence.
 
 **Party location**: A player's last observed coordinates on the shared layout. A location belongs to one shared run and layout revision; old or incompatible locations cannot move a marker on a new layout.
 

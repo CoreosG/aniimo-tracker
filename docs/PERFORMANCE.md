@@ -58,3 +58,19 @@ geometric validation. Manual calibration takes priority. Hidden in-app map
 previews are not rendered for each gameplay position, and slider changes are
 coalesced before saving to disk. The relay receives compact coordinates and map
 evidence; it performs no image processing.
+
+## Automatic layout recognition (0.3.5)
+
+The new corridor search retains compact masks rather than full route models for
+every candidate. On the development PC, seven Chaos masks plus the outdoor RGB
+reference used **2.4 MB** of persistent array storage. A repeated real minimap
+fixture measured **26 ms median / 34 ms p95** for the warmed recognition pass,
+including outdoor checking. This excludes screenshot capture, the existing
+feature-position registration and overlay rendering.
+
+In a 600-frame standalone check, process RSS was about 52 MB after warm-up,
+57 MB after 300 frames and 58 MB after 600. This is a short allocation/retention
+check, not an overnight leak guarantee. Screen frames are not retained by the
+recognizer; only reference masks, current evidence and coordinates persist.
+The new worker is inactive when tracking is paused or the game loses focus.
+**Tools → Identify from minimap** can be disabled to use M confirmation only.
