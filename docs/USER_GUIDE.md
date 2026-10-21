@@ -97,12 +97,11 @@ shows a compact status even before map setup; it tells you when a map pack is ne
 status header visible even while idle or paused. It is **off by default**. The master
 **Show overlay** switch still hides it; enabling the header does not start a run.
 
-The bar shows your configured shortcuts. **Ctrl+Shift+F7** calls the same
-**Start run** action as the button: an entered balance is optional, and a blank
-balance starts the run anyway. This also switches map-only tracking into a
-recorded run. Change or disable the shortcut in Settings. If an older custom
-shortcut already uses that combination, it is preserved and the new start
-shortcut stays blank until you choose a free combination.
+The bar shows your configured shortcuts. **Ctrl+Shift+F8** is **Start run / capture**:
+Inventory reads your starting balance, results read loot or points, and other
+gameplay starts without a balance. It can start a recorded run during map-only
+tracking too. Change or disable it in Settings. The manual **Start run** button
+also accepts a blank balance. Existing custom capture bindings are preserved.
 
 ## Budget and analytics
 
@@ -140,7 +139,7 @@ Default shortcuts (all customizable):
 
 | Action | Shortcut |
 | --- | --- |
-| Capture screen | `Ctrl+Shift+F8` |
+| Start run / capture | `Ctrl+Shift+F8` |
 | Save captured run | `Ctrl+Shift+F9` |
 | Toggle overlay | `;` |
 | Observe game map key | `M` |

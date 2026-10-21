@@ -881,3 +881,5 @@ LIMITE DE CAPTURAS
 
 Em Configurações > Armazenamento de capturas, escolha quantas partidas devem manter imagens. O padrão é 30. O limite inclui saldo inicial, saque e pontos das últimas partidas salvas, inclusive derrotas. Partidas sem capturas também contam. Capturas antigas e capturas descartadas do aplicativo são excluídas automaticamente, mas os resultados, os pontos, o saldo e as observações são mantidos. A partida ativa, o rascunho e leituras em andamento ficam protegidos. Use 0 para não guardar capturas após salvar a partida. Aumentar o limite não recupera imagens excluídas. Caminhos exportados em CSV podem apontar para capturas já removidas.
 '''
+
+PT_BR['Start run / capture']='Iniciar partida / capturar'

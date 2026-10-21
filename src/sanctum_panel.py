@@ -631,7 +631,7 @@ class SanctumPanel:
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         if self.always_status.get() and not self.app.ledger.active_start() and not preview:
-            start=self.app.shortcut_hint('start')+' start run' if self.app.shortcuts['start'] else 'Start run in tracker'
+            start=self.app.shortcut_hint('capture')+' start run' if self.app.shortcuts['capture'] else 'Start run in tracker'
             ready,_=self.app.result_ready()
             actions=[]
             if self.app.shortcuts['capture']:actions.append(self.app.shortcut_hint('capture')+' capture')
@@ -639,7 +639,7 @@ class SanctumPanel:
             pending=any(self.app.fields[k].get().strip() or k in self.app.draft_images for k in ('money','points')) or self.app.pending_ocr or self.app.auto_busy or self.app.auto_pending or self.app.busy_capture
             if ready:
                 if not details:details='Points ready\n'+' · '.join(actions)
-            elif not pending:details=start+'\n'+' · '.join(actions)
+            elif not pending:details=start
             elif not details:details='Result pending\n'+' · '.join(actions)
         if self.always_status.get() and self.app.ledger.active_start() and not preview and not details:
             details='Run active'

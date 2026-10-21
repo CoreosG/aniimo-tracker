@@ -71,12 +71,8 @@ class App(tk.Tk):
         self.shortcuts_path=self.data_dir/'shortcuts.json'
         try:
             saved_shortcuts=json.loads(self.shortcuts_path.read_text(encoding='utf-8'))
-            self.shortcuts={**DEFAULT_SHORTCUTS,**saved_shortcuts}
-            try:self.shortcut_specs=compile_shortcuts(self.shortcuts)
-            except ValueError:
-                if 'start' in saved_shortcuts:raise
-                self.shortcuts['start']=''
-                self.shortcut_specs=compile_shortcuts(self.shortcuts)
+            self.shortcuts={key:saved_shortcuts.get(key,default) for key,default in DEFAULT_SHORTCUTS.items()}
+            self.shortcut_specs=compile_shortcuts(self.shortcuts)
         except (OSError,ValueError,TypeError,AttributeError):
             self.shortcuts=dict(DEFAULT_SHORTCUTS)
             self.shortcut_specs=compile_shortcuts(self.shortcuts)
@@ -339,7 +335,7 @@ class App(tk.Tk):
             for child in self.goal_summary.winfo_children() if isinstance(child,ttk.Label)])
         self.budget_text = tk.StringVar()
         start_actions=ttk.Frame(self.home);start_actions.pack(fill='x')
-        self.capture_button=ttk.Button(start_actions,text=f'Capture screen · {self.shortcut_hint("capture")}',style='Accent.TButton',command=lambda:self.capture_image('auto',from_button=True))
+        self.capture_button=ttk.Button(start_actions,text=f'Start run / capture · {self.shortcut_hint("capture")}',style='Accent.TButton',command=lambda:self.capture_image('auto',from_button=True))
         self.capture_button.pack(side='left')
         self.fields['balance']=tk.StringVar()
         self.fields['balance'].trace_add('write',lambda *args:setattr(self,'balance_approximate',False))
@@ -594,7 +590,7 @@ class App(tk.Tk):
         self.hk=new
         self.shortcuts,self.shortcut_specs=values,specs
         for action,var in self.shortcut_vars.items():var.set(values[action])
-        self.capture_button.configure(text=f'Capture screen · {self.shortcut_hint("capture")}')
+        self.capture_button.configure(text=f'Start run / capture · {self.shortcut_hint("capture")}')
         self.sanctum.update_shortcut_hints()
         if hasattr(self,'nav_hint'):self.nav_hint.set(f'CAPTURE\n{self.shortcut_hint("capture")}\n\nOVERLAY\n{self.shortcut_hint("overlay")}')
         for widget in self.help_tab.winfo_children():widget.destroy()
@@ -850,7 +846,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             self.status.set('Screenshot queued. Reading the previous capture…')
             return
         self.auto_busy=True
-        self.capture_button.configure(text='Capture screen · reading last capture…',state='normal')
+        self.capture_button.configure(text='Start run / capture · reading last capture…',state='normal')
         self.status.set('Reading screen locally…')
         def work():
             kind,reading,text,error=None,{},'',None
@@ -926,7 +922,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 if key == 1:
                     self.capture_image('auto')
                 elif key == 2:self.quick_save_run()
-                elif key == 4:self.begin_run(manual=True)
                 elif key == 5:
                     self.sanctum.overlay_enabled.set(not self.sanctum.overlay_enabled.get())
                     self.sanctum.toggle_overlay()
@@ -942,7 +937,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         while not self.auto_messages.empty():
             context,kind,path,text,reading,error=self.auto_messages.get_nowait()
             self.auto_busy=False
-            self.capture_button.configure(text=f'Capture screen · {self.shortcut_hint("capture")}',state='normal')
+            self.capture_button.configure(text=f'Start run / capture · {self.shortcut_hint("capture")}',state='normal')
             if context!=self.capture_context():
                 self.status.set('The run changed while reading this screenshot. Capture it again if needed.')
                 continue
@@ -962,6 +957,8 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 panel.last_image.save(panel.folder/'last-map.png')
                 self.status.set('Map refreshed. Close the game map and continue playing.')
             elif kind=='gameplay' and self.sanctum.session.context_id is not None:
+                if not self.ledger.active_start() and self.can_start_capture():
+                    self.begin_run(without_balance=True)
                 if not self.sanctum.session.map_confirmed:
                     self.status.set('Run active. Open the game map inside Chaos once to confirm it; lobby minimaps cannot start the overlay.')
                     continue
@@ -978,7 +975,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                     panel.config['player']=panel.player;panel.write_config();panel.paint()
                 self.status.set('Gameplay detected. Map tracking resumed on your current run.')
             else:
-                if not self.ledger.active_start() and not self.sanctum.session.standalone and self.can_start_capture():
+                if not self.ledger.active_start() and self.can_start_capture():
                     self.begin_run(without_balance=True)
                     self.status.set('Run started without balance · screen unrecognized · waiting for map')
                 else:self.status.set('Screen unrecognized · current run and stats unchanged')

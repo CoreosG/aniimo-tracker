@@ -14,7 +14,7 @@
 
 **Update and restart**: A user-requested replacement of the packaged tracker with a verified release executable. It preserves the prior executable as a `.previous` backup and reopens the new version while keeping the player's data separate.
 
-**Map-only tracking**: Navigation without an active ledger run. Explicit result entry or a recognized Inventory/result capture can switch the player into recording results; an observed starting balance is optional for recorded runs.
+**Map-only tracking**: Navigation without an active ledger run. Explicit result entry or Start run / capture can switch the player into recording results; an observed starting balance is optional for recorded runs.
 
 **Capture target**: The chosen game window or explicit entire-monitor fallback. Automatic selection requires one unambiguous game window belonging to an Aniimo process; window capture uses the visible client area rather than the desktop's full monitor bounds.
 
@@ -40,8 +40,10 @@
 
 Map settings sections use visible buttons rather than a dropdown. Persistent
 status visibility is a top-level map control, independent of the selected
-settings page. Start-run hotkeys call the same optional-balance action as the
-manual Start run button; adding a default must preserve existing custom keys.
+settings page. One Start run / capture shortcut reads Inventory balance or result
+values when recognized and otherwise starts without a balance. The manual Start
+run button also accepts an optional balance. Retiring a shortcut preserves other
+custom bindings.
 
 Route targets and icon visibility are independent. Rich-room and trial goals use the downloaded route graph. Exit preference applies separately to routes from both entrances; the default remains the nearest exit. A navigation preference never changes the run ledger.
 

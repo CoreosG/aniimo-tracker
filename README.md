@@ -18,7 +18,7 @@
 2. Use the tutorial's **Set current stats** button to enter your **total Egg Heist points**, tickets and balance. Capture follows the Aniimo window automatically by default; choose another target in **Settings → General → Game capture** if needed. You can set stats without starting a run. Reopen the tutorial anytime with **?**.
 3. Click **Download map pack** in the tutorial or **Map & routes** once. Maps download directly from AniimoTools and MOANIIMO in the background.
 
-**Updating from 0.3.1 or earlier?** Download **0.3.2** once from the latest release, close the older tracker, and open the new executable. Older versions only open the download in your browser. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`.
+**Updating from 0.3.1 or earlier?** Download the **latest version** once from the latest release, close the older tracker, and open the new executable. Older versions only open the download in your browser. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`.
 
 **From 0.3.2 onward**, an update banner offers **Update & restart**: it downloads and verifies the release, closes the tracker, replaces the executable with a `.previous` backup, and reopens it. Checks run at startup and every 30 minutes; turn them off in **Settings → Storage & updates** if preferred.
 
@@ -26,8 +26,7 @@
 
 | In the game | Press | What happens |
 | :--- | :---: | :--- |
-| Any screen | **Ctrl + Shift + F7** | Use Start run; balance is optional |
-| Inventory, after shopping | **Ctrl + Shift + F8** | Start a run and read your balance |
+| Start run | **Ctrl + Shift + F8** | Start a run; reads your balance if Inventory is open |
 | Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
 | Egg Heist result | **Ctrl + Shift + F8** | Read points gained or lost |
 | Results ready | **Ctrl + Shift + F9** | Save the run; loot is optional |
@@ -81,7 +80,7 @@ The break-even card shows one sales target per run, with a colored ticket/key/ge
 
 **Using a slower PC?** Choose **Map & routes → Overlay → Position updates → Low CPU (1.5s)**. Map identification and OCR work locally in background workers. Position tracking reuses the detected minimap area, while keeping the same geometric checks. See [performance notes](docs/PERFORMANCE.md) for measurements and limits.
 
-[Release notes →](docs/CHANGELOG.md)
+[Release notes →](CHANGELOG.md)
 
 <details>
 <summary><b>See the new analytics and budget</b></summary>

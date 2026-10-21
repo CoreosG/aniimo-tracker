@@ -8,6 +8,23 @@ from app import App
 
 
 class CaptureTransitionTests(unittest.TestCase):
+    def test_gameplay_capture_starts_without_balance_during_map_only(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                app.sanctum.watch_action()
+                screenshot=Path(directory)/'screenshots/gameplay.png'
+                Image.new('RGB',(640,480)).save(screenshot)
+                with patch('app.recognize',return_value=''):
+                    app.auto_attach(screenshot)
+                    deadline=time.monotonic()+8
+                    while (app.auto_busy or app.pending_ocr) and time.monotonic()<deadline:
+                        app.update();time.sleep(.01)
+                self.assertIsNotNone(app.ledger.active_start(),app.status.get())
+                self.assertIsNone(app.ledger.active_start()['balance'])
+                self.assertFalse(app.sanctum.session.standalone)
+            finally:app.close()
+
     def test_explicit_manual_points_save_also_exits_map_only(self):
         with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
             app=App(directory,hotkeys=False)
