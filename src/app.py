@@ -1915,7 +1915,7 @@ if __name__ == '__main__':
                 app.begin_run(without_balance=True);app.fields['points'].set('192');app.notes.set('English note stays unchanged')
                 language_state=app.ledger.summary();language_run=app.ledger.active_start()['id']
                 app.set_language('pt-BR');app.update()
-                if (app.save_run_button.cget('text')!='Salvar partida' or not app.capture_button.cget('text').startswith('Capturar tela') or
+                if (app.save_run_button.cget('text')!='Salvar partida' or not app.capture_button.cget('text').startswith('Iniciar partida / capturar') or
                     app.ledger.summary()!=language_state or app.ledger.active_start()['id']!=language_run or app.fields['points'].get()!='192'):
                     raise RuntimeError('Portuguese UI changed ledger data or did not translate')
                 app.close();app=App(data_dir=temp,hotkeys=False);app.update()
