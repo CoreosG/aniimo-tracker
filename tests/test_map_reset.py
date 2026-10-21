@@ -8,10 +8,12 @@ from app import App
 
 class MapResetTests(unittest.TestCase):
     def test_map_only_waiting_overlay_survives_a_disconnected_saved_display(self):
-        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False), \
+                patch('sanctum_panel.capture_bounds',return_value=(100,100,1380,820)), \
+                patch('sanctum_panel.monitors',return_value=[dict(primary=True,bbox=(0,0,1920,1080))]):
             app=App(directory,hotkeys=False)
             try:
-                app.ledger.configure(monitor=99)
+                app.ledger.configure(monitor=99,capture_target='auto')
                 app.sanctum.watch_action()
                 app.busy_capture=True
                 with patch('sanctum_panel.game_is_foreground',return_value=True):
