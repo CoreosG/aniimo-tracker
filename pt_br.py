@@ -1,5 +1,92 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Live overlay preview|Prévia ao vivo da sobreposição
+Overlay preview|Prévia da sobreposição
+
+General|Geral
+Goals & budget|Meta e orçamento
+Storage & updates|Armazenamento e atualizações
+Game capture|Captura do jogo
+Rich rooms|Salas valiosas
+Rich rooms / trials (up to)|Salas valiosas / desafios (até)
+PREFERRED EXIT|SAÍDA PREFERIDA
+Nearest exit|Saída mais próxima
+Orange portal|Portal laranja
+Blue portal|Portal azul
+Routes always begin at both entrances.|As rotas sempre começam nas duas entradas.
+Monsters|Monstros
+Map legend|Legenda do mapa
+Click a room icon for details.|Clique no ícone de uma sala para ver os detalhes.
+Egg chance:|Chance de ovo:
+Chest variants:|Variações de baús:
+Possible enemies:|Inimigos possíveis:
+Check upstairs|Confira o andar superior
+Unconfirmed position|Posição não confirmada
+Possible spawn location|Local de aparecimento possível
+
+App updates|Atualizações do aplicativo
+Check for updates daily|Verificar atualizações diariamente
+Updates are downloaded from GitHub. Your run data stays on this PC.|As atualizações são baixadas do GitHub. Seus dados de partidas ficam neste PC.
+Check for updates|Verificar atualizações
+Download update|Baixar atualização
+Checking for updates…|Verificando atualizações…
+Could not check for updates. Try again later.|Não foi possível verificar atualizações. Tente novamente mais tarde.
+Update available:|Atualização disponível:
+ · Open Settings to download.| · Abra Configurações para baixar.
+You have the latest version.|Você tem a versão mais recente.
+Local map pack|Pacote de mapas local
+Download maps once from AniimoTools and MOANIIMO. Run tracking works without them.|Baixe os mapas uma vez de AniimoTools e MOANIIMO. O registro de partidas funciona sem eles.
+Download map pack|Baixar pacote de mapas
+Downloading maps…|Baixando mapas…
+Installed layout|Layout instalado
+Map pack ready. Open the game map to begin.|Mapas prontos. Abra o mapa do jogo para começar.
+Map download failed. Retry; your run history was not changed.|Falha ao baixar mapas. Tente novamente; seu histórico não foi alterado.
+Download the map pack in Map & routes first.|Baixe o pacote de mapas em Mapa e rotas primeiro.
+
+Party|Grupo
+Explore together|Explore em grupo
+Share your map and positions with up to two teammates.|Compartilhe o mapa e as posições com até dois colegas.
+Your profile|Seu perfil
+Username|Nome de usuário
+Save profile|Salvar perfil
+Profile saved|Perfil salvo
+Party server|Servidor do grupo
+Default · eggheist.banneret.app|Padrão · eggheist.banneret.app
+Custom / self-hosted server|Servidor personalizado / próprio
+Create party|Criar grupo
+Join party|Entrar no grupo
+Leave party|Sair do grupo
+or code|ou código
+Copy code|Copiar código
+Party code copied|Código do grupo copiado
+No party · up to 3 players|Sem grupo · até 3 jogadores
+Not in a party|Fora de um grupo
+Waiting for a shared map|Aguardando mapa compartilhado
+Waiting for party map|Aguardando mapa do grupo
+Party map|Mapa do grupo
+New shared run|Nova partida do grupo
+Party difficulty|Dificuldade do grupo
+Connection|Conexão
+Role|Função
+Online|Conectado
+Host|Líder
+Member|Membro
+Connecting…|Conectando…
+Reconnecting…|Reconectando…
+Starting a new shared run…|Iniciando nova partida do grupo…
+Connected · positions sync automatically|Conectado · posições sincronizadas automaticamente
+Only coordinates and map evidence are shared. Screenshots, OCR, loot and run history stay on your PC.|Somente coordenadas e identificação do mapa são compartilhadas. Capturas, OCR, saque e histórico ficam no seu PC.
+Party is full (3 players).|O grupo está cheio (3 jogadores).
+Party not found. Check the code and server.|Grupo não encontrado. Confira o código e o servidor.
+Party session expired. Join again.|A sessão do grupo expirou. Entre novamente.
+Server is full. Try again later.|O servidor está cheio. Tente novamente mais tarde.
+This party session is already connected.|Esta sessão do grupo já está conectada.
+The server rejected a party update.|O servidor recusou uma atualização do grupo.
+Enter the 8-character party code.|Digite o código do grupo com 8 caracteres.
+Enter a username (1–24 characters).|Digite um nome de usuário (1–24 caracteres).
+Leave the current party first.|Saia do grupo atual primeiro.
+Party connection failed.|Falha na conexão com o grupo.
+last known|última posição
 Screenshot storage|Armazenamento de capturas
 Keep screenshots for last X runs (0 = none)|Manter capturas das últimas X partidas (0 = nenhuma)
 Apply screenshot limit|Aplicar limite de capturas

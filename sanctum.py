@@ -1,3 +1,4 @@
+from asset_paths import ASSETS
 """Local screen-image recognition and run-scoped map watching.
 
 No game-memory access. Default templates come from the player's captured map;
@@ -83,7 +84,7 @@ class Detector:
 
     def template_path(self, kind):
         custom = self.folder / f'{kind}.png'
-        return custom if custom.exists() else Path(__file__).with_name('assets') / f'{kind}.png'
+        return custom if custom.exists() else ASSETS / f'{kind}.png'
 
     def is_map_screen(self,image):
         """Require the full-map zoom controls, independent of portal-like HUD icons."""
@@ -95,7 +96,7 @@ class Detector:
         frame=np.asarray(normalized)
         positions=[]
         for name,top,bottom in (('plus',280,410),('minus',605,740)):
-            with Image.open(Path(__file__).with_name('assets')/f'map-zoom-{name}.png') as im:
+            with Image.open(ASSETS/f'map-zoom-{name}.png') as im:
                 template=np.asarray(im.convert('RGB'))
             crop=frame[top:bottom,round(frame.shape[1]*.02):round(frame.shape[1]*.09)]
             if crop.shape[1]<template.shape[1]:return False
@@ -243,6 +244,8 @@ class Detector:
         return regions
 
     def detect(self, image):
+        if not (ASSETS/'simulator'/f'layout-{layouts_for(self.difficulty)[0]}.json').exists():
+            return dict(candidates=[],reason='Download the map pack in Map & routes first.')
         import numpy as np
         import cv2
         from PIL import Image
@@ -299,7 +302,7 @@ class Detector:
         # The map-36 pair is diagonally southwest; map 40 is horizontal west.
         # Compare actual portal vectors rather than rounding both into one octant.
         if not (self.folder/'orange.png').exists() or self.difficulty in ('Beginner','Hard'):
-            data=json.loads((Path(__file__).with_name('assets')/'maps.json').read_text())
+            data=json.loads((ASSETS/'maps.json').read_text())
             dx,dy=result['blue'][0]-result['orange'][0],result['blue'][1]-result['orange'][1]
             observed=math.atan2(dy,dx)
             ranked=[]
@@ -307,7 +310,7 @@ class Detector:
                 if str(candidate) in data:
                     a,b=data[str(candidate)]['orange'],data[str(candidate)]['blue']
                 else:
-                    entry=json.loads((Path(__file__).with_name('assets')/'simulator'/f'layout-{candidate}.json').read_text())
+                    entry=json.loads((ASSETS/'simulator'/f'layout-{candidate}.json').read_text())
                     a,b=([entry['doors'][door]['x']*entry['img']['w'],entry['doors'][door]['y']*entry['img']['h']] for door in ('main','side'))
                 angle=math.atan2(b[1]-a[1],b[0]-a[0])
                 error=abs(math.atan2(math.sin(observed-angle),math.cos(observed-angle)))

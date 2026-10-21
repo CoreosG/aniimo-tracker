@@ -19,9 +19,13 @@ screenshots/
 calibration/
 sanctum/
 shortcuts.json
+party-profile.json
 control.json
 viewer-status.json
 viewer-error.txt
 .env
 .env.*
 *.log
+
+update-state.json
+tutorial-state.json

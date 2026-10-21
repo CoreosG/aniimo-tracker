@@ -1,3 +1,4 @@
+from asset_paths import ASSETS
 """Offline floor plans, key-room routes and screen-only map registration."""
 import json
 import math
@@ -9,7 +10,6 @@ from PIL import Image,ImageDraw,ImageOps
 from map_catalog import layouts_for
 from i18n import tr
 
-ASSETS=Path(__file__).with_name('assets')
 SIMULATOR=ASSETS/'simulator'
 
 
@@ -22,6 +22,7 @@ class MapLibrary:
         return self.models[layout]
 
     def identify(self,frame,region=None):
+        if not (SIMULATOR/f'layout-{layouts_for(self.difficulty)[0]}.json').exists():return None
         matches=[]
         for layout in layouts_for(self.difficulty):
             result=self.model(layout).match_minimap(frame,region)
@@ -86,22 +87,24 @@ class MapEngine:
         return [float(q[0]/self.image.width*100),float(q[1]/self.image.height*100)]
 
     @lru_cache(maxsize=96)
-    def route(self,entrance=0,keys=2,goal='keys',eggs=1):
-        if goal not in ('keys','eggs','both','none'):raise ValueError('Unknown route goal')
+    def route(self,entrance=0,keys=2,goal='keys',eggs=1,rooms=1,exit='nearest'):
+        if goal not in ('keys','eggs','both','none','rich','trials'):raise ValueError('Unknown route goal')
+        if exit not in ('nearest','orange','blue'):raise ValueError('Unknown exit')
         pts=self.routes['pts'];dist=self.routes['D']
-        targets=[i for i,p in enumerate(pts) if p['k'] in ('key','nest')]
-        wanted={'key':max(0,int(keys)) if goal in ('keys','both') else 0,
-                'nest':max(0,int(eggs)) if goal in ('eggs','both') else 0}
-        for kind in wanted:wanted[kind]=min(wanted[kind],sum(pts[i]['k']==kind for i in targets))
-        targets=[i for i in targets if wanted[pts[i]['k']]]
-        key_mask=sum(1<<j for j,i in enumerate(targets) if pts[i]['k']=='key')
-        # Keep the cheapest visit order per subset/end point, avoiding factorial
-        # permutations when the player requests multiple nests and key rooms.
+        wanted={'key':max(0,min(3,int(keys))) if goal in ('keys','both') else 0,
+                'nest':max(0,min(8,int(eggs))) if goal in ('eggs','both') else 0,
+                'room':max(0,min(4,int(rooms))) if goal=='rich' else 0,
+                'challenge':max(0,min(4,int(rooms))) if goal=='trials' else 0}
+        for kind in wanted:wanted[kind]=min(wanted[kind],sum(p['k']==kind for p in pts))
+        targets=[i for i,p in enumerate(pts) if wanted.get(p['k'],0)]
+        masks={kind:sum(1<<j for j,i in enumerate(targets) if pts[i]['k']==kind) for kind in wanted}
+        # Cheapest visit order per subset/end point; bounds prevent factorial
+        # work when a user requests multiple nests or rich rooms.
         states={(0,int(entrance)):(0.,())}
         for _ in range(sum(wanted.values())):
             following={}
             for (mask,last),(cost,order) in states.items():
-                counts={'key':(mask&key_mask).bit_count(),'nest':(mask&~key_mask).bit_count()}
+                counts={kind:(mask&bits).bit_count() for kind,bits in masks.items()}
                 for j,index in enumerate(targets):
                     if mask&(1<<j) or counts[pts[index]['k']]>=wanted[pts[index]['k']]:continue
                     distance=dist[last][index]
@@ -111,10 +114,10 @@ class MapEngine:
             states=following
         best=None
         for (_,last),(cost,order) in states.items():
-            for exit in (0,1):
-                distance=0 if last==exit else dist[last][exit]
+            for end in ((0,1) if exit=='nearest' else (0,) if exit=='orange' else (1,)):
+                distance=0 if last==end else dist[last][end]
                 if distance is None:continue
-                candidate=(cost+distance,(int(entrance),)+order+(exit,))
+                candidate=(cost+distance,(int(entrance),)+order+(end,))
                 if best is None or candidate[0]<best[0]:best=candidate
         if best is None:raise ValueError('No connected route satisfies these targets')
         segments=[]
@@ -234,17 +237,17 @@ class MapEngine:
         self.geometry_scale=scale
         return dict(player=position,confidence=float(score),method='corridors',region=list(box),inliers=0)
 
-    def render(self,size=(700,700),keys=2,entrance=None,player=None,zoom=1.,follow=True,live=False,goal='keys',eggs=1,icons=None,unconfirmed_trials=False):
+    def render(self,size=(700,700),keys=2,entrance=None,player=None,zoom=1.,follow=True,live=False,goal='keys',eggs=1,icons=None,unconfirmed_trials=False,teammates=None,player_name=None,player_color='#3df5ff',rooms=1,exit='nearest',legend=False):
         # All marker/route coordinates refer to the original render percentages.
         im=self.image.copy();draw=ImageDraw.Draw(im)
         def xy(p):return (p[0]*im.width/100,p[1]*im.height/100)
-        icons={**dict(keys=True,eggs=True,trials=True,chests=True),**(icons or {})}
+        icons={**dict(keys=True,eggs=True,trials=True,chests=True,monsters=False),**(icons or {})}
         # Independent alternatives, each satisfying the full requested goal.
         # Blue dashes leave the orange path visible wherever the routes overlap.
         for start in ((0,1) if entrance is None else (entrance,)):
             color=('#ff9b43','#65b5ff')[start]
             width=max(5,im.width//180)
-            for segment in self.route(start,keys,goal,eggs)['segments']:
+            for segment in self.route(start,keys,goal,eggs,rooms,exit)['segments']:
                 points=[xy(p) for p in segment]
                 if len(points)<2:continue
                 if start==0:draw.line(points,fill=color,width=width,joint='curve')
@@ -267,7 +270,7 @@ class MapEngine:
         offset=(round(size[0]/2-center[0]*scale),round(size[1]/2-center[1]*scale))
         canvas.paste(scaled,offset)
         # Draw room symbols after scaling so they remain readable on the overlay.
-        groups=[('nests','egg','eggs'),('keyrooms','key','keys'),('challenges','trial','trials'),('rooms','chest','chests')]
+        groups=[('nests','egg','eggs'),('keyrooms','key','keys'),('challenges','trial','trials'),('rooms','chest','chests'),('mobs','monster','monsters')]
         for name,kind,category in groups:
             if not icons[category]:continue
             icon=room_icon(kind)
@@ -279,33 +282,43 @@ class MapEngine:
                 canvas.paste(icon,(x-icon.width//2,y-icon.height//2),icon)
                 if kind=='trial' and p.get('maybe'):
                     ImageDraw.Draw(canvas).text((x+8,y-19),'?',fill='#ffc65c',stroke_width=1,stroke_fill='#15232f')
-        if player:
-            x,y=xy(player)
+        markers=list(teammates or [])
+        if player:markers.append(dict(position=player,name=player_name or tr('YOU'),color=player_color,live=live))
+        for marker in markers:
+            x,y=xy(marker['position'])
             x,y=round(x*scale+offset[0]),round(y*scale+offset[1])
             draw=ImageDraw.Draw(canvas)
-            color='#3df5ff' if live else '#ffc65c'
+            color=marker['color']
             # Fixed screen size and a dark halo keep YOU distinct from the route,
             # even when the whole map is scaled down or a room icon overlaps it.
             draw.ellipse((x-20,y-20,x+20,y+20),fill='#14232f',outline=color,width=3)
             for a,b in [((x-27,y),(x-19,y)),((x+19,y),(x+27,y)),((x,y-27),(x,y-19)),((x,y+19),(x,y+27))]:
                 draw.line((a,b),fill=color,width=3)
-            draw.polygon([(x,y-13),(x-10,y+10),(x,y+5),(x+10,y+10)],fill=color,outline='white',width=2)
-            label=tr('YOU' if live else 'YOU · last known')
+            draw.ellipse((x-10,y-10,x+10,y+10),fill=color if marker['live'] else '#8f9caa',outline='white',width=2)
+            label=marker['name']+('' if marker['live'] else ' · '+tr('last known'))
             bounds=draw.textbbox((0,0),label)
             width=bounds[2]-bounds[0]
             draw.rounded_rectangle((x-width//2-5,y+28,x+width//2+6,y+45),radius=4,fill='#14232f',outline=color)
             draw.text((x-width//2,y+30),label,fill='white')
+        if legend:
+            draw=ImageDraw.Draw(canvas)
+            rows=[('key','Key doors'),('egg','Egg nests'),('trial','Sanctums / trials'),('chest','Chest rooms'),('monster','Monsters')]
+            y=max(4,size[1]-len(rows)*27-14)
+            draw.rounded_rectangle((8,y-5,174,size[1]-7),radius=6,fill='#14232f',outline='#536783')
+            for kind,label in rows:
+                icon=room_icon(kind);canvas.paste(icon,(12,y),icon)
+                draw.text((46,y+7),tr(label),fill='white');y+=27
         pixels=np.asarray(canvas).copy()
         pixels[np.max(pixels,axis=2)<22]=(0,0,1)
         return Image.fromarray(pixels)
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=5)
 def room_icon(kind):
     """Font-independent room symbols, drawn at 2x for small overlay sizes."""
     icon=Image.new('RGBA',(64,64))
     d=ImageDraw.Draw(icon)
-    d.ellipse((2,2,62,62),fill='#15232f',outline={'key':'#ffcb54','egg':'#eeb6ff','trial':'#87bcff','chest':'#e7b56b'}[kind],width=3)
+    d.ellipse((2,2,62,62),fill='#15232f',outline={'key':'#ffcb54','egg':'#eeb6ff','trial':'#87bcff','chest':'#e7b56b','monster':'#ff8f9c'}[kind],width=3)
     if kind=='key':
         d.line((27,28,47,48),fill='#ffdc73',width=8)
         d.line((39,39,45,33),fill='#ffdc73',width=7)
@@ -316,6 +329,9 @@ def room_icon(kind):
         d.polygon([(32,11),(14,28),(32,52),(50,28)],fill='#8ebeff',outline='white',width=3)
         d.line((32,19,32,42),fill='#15232f',width=4)
         d.line((23,29,41,29),fill='#15232f',width=4)
+    elif kind=='monster':
+        d.polygon([(14,18),(23,23),(32,17),(41,23),(50,18),(48,41),(39,50),(25,50),(16,41)],fill='#ff8f9c')
+        d.ellipse((22,29,27,35),fill='#15232f');d.ellipse((37,29,42,35),fill='#15232f')
     elif kind=='chest':
         d.rounded_rectangle((13,22,51,49),radius=4,fill='#e7b56b',outline='#fff0bd',width=3)
         d.line((14,32,50,32),fill='#15232f',width=4)

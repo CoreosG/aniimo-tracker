@@ -20,7 +20,7 @@ def tr(text):
     translated=PT_BR.get(text)
     if translated is None:translated=_pattern.sub(lambda m:PT_BR[m.group()],text)
     # Localized display only: numeric inputs and persisted values are untouched.
-    translated=re.sub(r'(?<![\w])\d{1,3}(?:,\d{3})+(?:\.\d+)?|(?<![\w])\d+\.\d+(?=[KMB\s%/·]|$)',
+    translated=re.sub(r'(?<![\w])\d{1,3}(?:,\d{3})+(?:\.\d+)?|(?<![\w.])\d+\.\d+(?=[KMB\s%/·]|$)',
         lambda m:m[0].replace(',','\0').replace('.',',').replace('\0','.'),translated)
     translated=re.sub(r'(?<!\d)1 (derrotas|partidas|conhecidos|desconhecidos)\b',lambda m:'1 '+{'derrotas':'derrota','partidas':'partida','conhecidos':'conhecido','desconhecidos':'desconhecido'}[m[1]],translated)
     translated=re.sub(r'(?<!\d)(\d{4})-(\d{2})-(\d{2})(T?)',lambda m:f'{m[3]}/{m[2]}/{m[1]}'+(' ' if m[4] else ''),translated)

@@ -1,3 +1,4 @@
+from asset_paths import ASSETS
 """Local map preview, run-scoped recognition and click-through game overlay."""
 import ctypes
 from ctypes import wintypes
@@ -20,6 +21,14 @@ from map_overlay import MapOverlay
 from shortcut_keys import ObservedKeyTaps
 from map_catalog import DIFFICULTIES,layouts_for
 from i18n import tr
+
+
+def app_is_foreground():
+    user=ctypes.windll.user32
+    user.GetForegroundWindow.restype=wintypes.HWND
+    pid=wintypes.DWORD()
+    user.GetWindowThreadProcessId(user.GetForegroundWindow(),ctypes.byref(pid))
+    return pid.value==os.getpid()
 
 
 def game_is_foreground():
@@ -61,8 +70,11 @@ class SanctumPanel:
         difficulty=self.config.get('difficulty','Chaos')
         self.difficulty=tk.StringVar(value=difficulty if difficulty in DIFFICULTIES else 'Chaos')
         self.route_goal=tk.StringVar(value=self.config.get('route_goal','keys'))
+        self.route_rooms=tk.StringVar(value=str(self.config.get('route_rooms',1)))
+        self.route_exit=tk.StringVar(value=self.config.get('route_exit','nearest'))
+        self.legend=tk.BooleanVar(value=self.config.get('legend',False))
         self.egg_count=tk.StringVar(value=str(self.config.get('route_eggs',1)))
-        self.icon_vars={name:tk.BooleanVar(value=self.config.get('icons',{}).get(name,name!='chests')) for name in ('keys','eggs','trials','chests')}
+        self.icon_vars={name:tk.BooleanVar(value=self.config.get('icons',{}).get(name,name not in ('chests','monsters'))) for name in ('keys','eggs','trials','chests','monsters')}
         self.detector = Detector(self.folder / 'calibration',self.difficulty.get())
         self.session = WatchSession(self.config.get('enabled',True))
         self.session.run_id = -1
@@ -87,6 +99,8 @@ class SanctumPanel:
         self.unconfirmed_trials=tk.BooleanVar(value=self.config.get('unconfirmed_trials',False))
         self.next_screen_probe=0
         self.overlay_enabled=tk.BooleanVar(value=self.config.get('overlay_enabled',True))
+        self.preview_overlay=tk.BooleanVar(value=False)
+        self.last_previewing=False
         self.opacity=tk.DoubleVar(value=self.config.get('opacity',90))
         self.overlay_size=tk.DoubleVar(value=self.config.get('overlay_size',650))
         self.zoom=tk.DoubleVar(value=self.config.get('zoom',1.0))
@@ -102,6 +116,8 @@ class SanctumPanel:
         self.sync_run()
 
     def build(self):
+        from map_setup_panel import MapSetupPanel
+        self.map_setup=MapSetupPanel(self,self.tab)
         top=ttk.Frame(self.tab);top.pack(fill='x',pady=(0,16))
         titles=ttk.Frame(top);titles.pack(side='left')
         ttk.Label(titles,text='SANCTUM NAVIGATOR',foreground='#8da8c4',font=('Segoe UI Semibold',9)).pack(anchor='w')
@@ -131,7 +147,7 @@ class SanctumPanel:
             ttk.Radiobutton(row,text=name,variable=self.difficulty,value=name,command=self.change_difficulty,style='Chip.TRadiobutton').grid(row=index//2,column=index%2,sticky='ew',padx=2,pady=3)
         row.columnconfigure((0,1),weight=1)
         route=card('ROUTE GOAL')
-        for name,value in [('Key doors','keys'),('Egg nests','eggs'),('Eggs + key doors','both'),('Map only · no route','none')]:
+        for name,value in [('Key doors','keys'),('Egg nests','eggs'),('Eggs + key doors','both'),('Rich rooms','rich'),('Sanctums / trials','trials'),('Map only · no route','none')]:
             ttk.Radiobutton(route,text=name,variable=self.route_goal,value=value,command=self.save_preferences,style='Panel.TRadiobutton').pack(anchor='w',pady=3)
         counts=ttk.Frame(route,style='Panel.TFrame');counts.pack(fill='x',pady=(12,2))
         self.count_spins={}
@@ -140,16 +156,25 @@ class SanctumPanel:
             ttk.Label(box,text=title+' (up to)',style='Panel.TLabel',foreground='#9aabc3').pack(anchor='w')
             spin=ttk.Spinbox(box,textvariable=var,from_=1,to=maximum,width=5,state='readonly',command=self.save_preferences)
             spin.pack(anchor='w',pady=(5,0));self.count_spins['keys' if title=='Key rooms' else 'eggs']=spin
+        ttk.Label(route,text='Rich rooms / trials (up to)',style='Panel.TLabel',foreground='#9aabc3').pack(anchor='w',pady=(10,3))
+        self.room_spin=ttk.Spinbox(route,textvariable=self.route_rooms,from_=1,to=4,width=5,state='readonly',command=self.save_preferences)
+        self.room_spin.pack(anchor='w')
+        exits=card('PREFERRED EXIT')
+        for title,value in [('Nearest exit','nearest'),('Orange portal','orange'),('Blue portal','blue')]:
+            ttk.Radiobutton(exits,text=title,variable=self.route_exit,value=value,command=self.save_preferences,style='Panel.TRadiobutton').pack(anchor='w',pady=3)
+        ttk.Label(exits,text='Routes always begin at both entrances.',style='Panel.TLabel',wraplength=245,foreground='#9aabc3').pack(anchor='w',pady=(8,0))
         layers=card('MAP ICONS')
-        for title,name in [('Key doors','keys'),('Egg nests','eggs'),('Sanctums / trials','trials'),('Chest rooms','chests')]:
+        for title,name in [('Key doors','keys'),('Egg nests','eggs'),('Sanctums / trials','trials'),('Chest rooms','chests'),('Monsters','monsters')]:
             ttk.Checkbutton(layers,text=title,variable=self.icon_vars[name],command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         ttk.Checkbutton(layers,text='Include unconfirmed trials (?)',variable=self.unconfirmed_trials,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
+        ttk.Checkbutton(layers,text='Map legend',variable=self.legend,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         self.advanced=self.app.disclosure(controls,'Display & advanced')
         options=self.advanced
+        ttk.Checkbutton(options,text='Live overlay preview',variable=self.preview_overlay,command=self.tick).pack(anchor='w',pady=6)
         ttk.Checkbutton(options,text='Capture / save status in overlay',variable=self.capture_status,command=self.save_preferences).pack(anchor='w',pady=6)
         for title,var,lo,hi in [('Opacity',self.opacity,15,100),('Overlay size',self.overlay_size,350,950),('Zoom',self.zoom,1,3)]:
             ttk.Label(options,text=title,style='Muted.TLabel').pack(anchor='w',pady=(9,0))
-            ttk.Scale(options,variable=var,from_=lo,to=hi,command=lambda _:self.save_preferences()).pack(fill='x',pady=4)
+            ttk.Scale(options,variable=var,from_=lo,to=hi,command=self.adjust_overlay).pack(fill='x',pady=4)
         ttk.Checkbutton(options,text='Follow player',variable=self.follow,command=self.save_preferences).pack(anchor='w',pady=6)
         ttk.Checkbutton(options,text='Party budget · carry 1 key',variable=self.party,command=self.save_party).pack(anchor='w',pady=6)
         for title,command in [('Set minimap area',self.set_minimap),('Import map image',self.import_map),('Calibrate markers',self.calibrate),('Open local simulator',self.open_simulator)]:
@@ -163,6 +188,9 @@ class SanctumPanel:
         ttk.Label(workspace,textvariable=self.status,style='Panel.TLabel',foreground='#79dcc8',wraplength=660).pack(anchor='w',pady=(12,8))
         self.preview=tk.Canvas(workspace,height=380,bg='#101826',highlightthickness=0)
         self.preview.pack(fill='both',expand=True,pady=8);self.preview.bind('<Configure>',lambda e:self.paint())
+        self.preview.bind('<Button-1>',self.inspect_room)
+        self.room_details=tk.StringVar(value='Click a room icon for details.')
+        ttk.Label(workspace,textvariable=self.room_details,style='Panel.TLabel',foreground='#edf5f5',wraplength=660).pack(anchor='w',pady=(4,0))
         self.preview.create_text(250,150,text=tr('Open the game map to begin\nOr choose a layout to explore routes'),fill='#8c9db5',font=('Segoe UI',13),justify='center',tags='empty')
         ttk.Label(workspace,textvariable=self.route_status,style='Panel.TLabel',foreground='#9aabc3',wraplength=660).pack(anchor='w',pady=(8,4))
         self.instructions_label=ttk.Label(workspace,style='Panel.TLabel',foreground='#70849e',wraplength=660)
@@ -186,7 +214,8 @@ class SanctumPanel:
         self.update_shortcut_hints();self.save_preferences()
 
     def render_options(self):
-        return dict(goal=self.route_goal.get(),eggs=int(self.egg_count.get()),icons={k:v.get() for k,v in self.icon_vars.items()},unconfirmed_trials=self.unconfirmed_trials.get())
+        party=self.app.party.own_marker() if hasattr(self.app,'party') else {}
+        return dict(goal=self.route_goal.get(),eggs=int(self.egg_count.get()),icons={k:v.get() for k,v in self.icon_vars.items()},unconfirmed_trials=self.unconfirmed_trials.get(),rooms=int(self.route_rooms.get()),exit=self.route_exit.get(),legend=self.legend.get(),**party)
 
     def update_shortcut_hints(self):
         key=self.app.shortcut_hint('map')
@@ -238,15 +267,21 @@ class SanctumPanel:
 
     def save_preferences(self):
         self.config.update(enabled=self.enabled.get(),party=self.party.get(),route_keys=int(self.keys.get()),
-            standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),icons={k:v.get() for k,v in self.icon_vars.items()},
+            standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),route_rooms=int(self.route_rooms.get()),route_exit=self.route_exit.get(),legend=self.legend.get(),icons={k:v.get() for k,v in self.icon_vars.items()},
             overlay_enabled=self.overlay_enabled.get(),opacity=round(self.opacity.get()),overlay_size=round(self.overlay_size.get()),
             zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),unconfirmed_trials=self.unconfirmed_trials.get())
         self.overlay_dirty=True
         if hasattr(self,'count_spins'):
             for name,spin in self.count_spins.items():spin.configure(state='readonly' if self.route_goal.get() in (name,'both') else 'disabled')
+        if hasattr(self,'room_spin'):self.room_spin.configure(state='readonly' if self.route_goal.get() in ('rich','trials') else 'disabled')
         self.update_tracking_button()
         self.write_config()
         if hasattr(self,'preview'):self.paint()
+
+    def adjust_overlay(self,_=None):
+        self.preview_overlay.set(True)
+        self.save_preferences()
+        self.tick()
 
     def write_config(self):
         temp = self.config_path.with_suffix('.tmp')
@@ -372,6 +407,8 @@ class SanctumPanel:
         self.escape_down = escape
 
     def tick(self):
+        self.map_setup.tick()
+        if not self.assets_ready:return
         self.poll_map_keys()
         details=self.app.overlay_run_status() if self.capture_status.get() else ''
         if details!=self.last_capture_status:
@@ -483,31 +520,40 @@ class SanctumPanel:
             self.position_time=0;self.overlay_dirty=True
             self.status.set(f'Layout {self.engine.layout} · position paused · open the game map to refresh or set minimap area')
         arranging=self.overlay.movable and self.overlay_enabled.get()
+        on_map_tab=self.app.tabs.select()==str(self.app.sanctum_tab)
+        if not on_map_tab:self.preview_overlay.set(False)
+        previewing=self.preview_overlay.get() and on_map_tab and app_is_foreground()
+        if previewing!=self.last_previewing:
+            self.last_previewing=previewing;self.overlay_dirty=True
         waiting=self.session.watching and self.session.context_id is not None and not self.session.map_confirmed
         header_only=self.map_open or self.map_rescan_pending
-        show=self.overlay_enabled.get() and (arranging or (in_game and (waiting or (self.session.watching and header_only) or (self.session.can_track_minimap and self.engine))))
+        show=previewing or (self.overlay_enabled.get() and (arranging or (in_game and (waiting or (self.session.watching and header_only) or (self.session.can_track_minimap and self.engine)))))
         if not show:self.overlay.hide()
         elif self.overlay_dirty or not self.overlay.visible:
-            self.show_overlay(header_only=header_only)
+            self.show_overlay(header_only=header_only and not previewing,preview=previewing)
             self.overlay_dirty=False
 
-    def show_overlay(self,header_only=False):
+    def show_overlay(self,header_only=False,preview=False):
         size=round(self.overlay_size.get());screen=monitors()[self.app.ledger.settings()['monitor']]['bbox']
-        draw_map=not header_only and self.engine is not None and (self.session.map_confirmed or self.overlay.movable)
+        engine=self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)
+        draw_map=not header_only and engine is not None and (preview or self.session.map_confirmed or self.overlay.movable)
         live=time.monotonic()-self.position_time<2
-        image=self.engine.render((size,size),int(self.keys.get()),None,self.player,self.zoom.get(),self.follow.get(),live,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
-        label=self.map_feedback if header_only else f'{self.difficulty.get()} {self.engine.layout}' if draw_map else ''
+        player=(self.player or [50,50]) if preview else self.player
+        image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
+        label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
         if not self.capture_status.get() and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
         position=self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
         if not any(position[0]+size>m['bbox'][0]+40 and position[0]<m['bbox'][2]-40 and position[1]+size>m['bbox'][1]+40 and position[1]<m['bbox'][3]-40 for m in monitors()):
             position=[screen[2]-size-20,screen[1]+70]
-        details=self.app.overlay_run_status() if self.capture_status.get() else ''
+        details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         # Map feedback already describes the current view; omit duplicate
         # waiting/run text so the bar stays at two short lines.
         if header_only and details:details='\n'+details.partition('\n')[2]
         self.overlay.show(image,(*position,0,0),self.opacity.get()/100,label,details=details)
 
     def scan(self, explicit=False,minimap=False):
+        if not self.assets_ready:
+            self.status.set('Download the map pack in Map & routes first.');return
         if self.busy:
             return
         self.busy = True
@@ -587,6 +633,32 @@ class SanctumPanel:
                 self.preview.create_oval(x-9,y-9,x+9,y+9,outline=color,width=2)
                 self.preview.create_text(x+12,y,text=tr(kind),fill=color,anchor='w')
 
+    def inspect_room(self,event):
+        if not self.engine:return
+        engine=self.engine;w,h=self.preview.winfo_width(),self.preview.winfo_height()
+        scale=min(w/engine.image.width,h/engine.image.height)
+        ox,oy=(w-engine.image.width*scale)/2,(h-engine.image.height*scale)/2
+        closest=None
+        for group,label in [('keyrooms','Key doors'),('nests','Egg nests'),('challenges','Sanctums / trials'),('rooms','Chest rooms'),('mobs','Monsters')]:
+            for room in engine.data.get(group,[]):
+                x=ox+room['x']/100*engine.image.width*scale;y=oy+room['y']/100*engine.image.height*scale
+                distance=((event.x-x)**2+(event.y-y)**2)**.5
+                if distance<=24 and (closest is None or distance<closest[0]):closest=(distance,group,label,room)
+        if closest is None:
+            self.room_details.set('Click a room icon for details.');return
+        _,group,label,room=closest
+        details=[tr(label)]
+        if group=='keyrooms':
+            if 'nest' in room:details.append(tr('Egg chance: ')+f"{room['nest']:.0%}")
+            details.append(tr('Chest variants: ')+str(len(room.get('variants',[]))))
+        elif group=='rooms':
+            details.extend(tr(name)+': '+str(room.get(key,0)) for name,key in [('Gold','gold'),('Purple','purple'),('Blue','blue')])
+            if room.get('top'):details.append(tr('Check upstairs'))
+        elif group=='mobs':details.append(tr('Possible enemies: ')+str(room.get('max',0)))
+        elif room.get('maybe'):details.append(tr('Unconfirmed position'))
+        else:details.append(tr('Possible spawn location'))
+        self.room_details.set(' · '.join(details))
+
     def calibrate(self):
         if self.last_image is None:
             path = self.folder/'last-map.png'
@@ -655,7 +727,7 @@ class SanctumPanel:
         self.write_config()
 
     def open_simulator(self):
-        if not (Path(__file__).with_name('assets')/'simulator'/'index.html').exists():
+        if not (ASSETS/'simulator'/'index.html').exists():
             webbrowser.open(SITE_URL)
             self.route_status.set('Opening AniimoTools in your browser. The native map preview and overlay remain local.')
             return
@@ -676,6 +748,8 @@ class SanctumPanel:
         self.overlay.close()
 
     def accept_layout(self,layout,reading):
+        if not self.assets_ready:
+            self.status.set('Download the map pack in Map & routes first.');return
         if layout in reading.get('candidates',[]) and 'orange' in reading and 'blue' in reading:
             self.session.confirm_map()
             self.map_feedback=f'{self.difficulty.get()} {layout} · Map confirmed'
@@ -685,6 +759,8 @@ class SanctumPanel:
         position=self.engine.position_from_map(reading)
         if position:
             self.player=position;self.position_time=0
+        if hasattr(self.app,'party'):
+            self.app.party.observed_layout(layout,reading)
         self.config.update(player=self.player,map_confirmed=self.session.map_confirmed,reading={k:reading[k] for k in ('orange','blue','player') if k in reading})
         self.overlay_dirty=True;self.paint();self.write_config()
 

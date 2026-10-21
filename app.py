@@ -27,6 +27,9 @@ from analytics_panel import AnalyticsPanel
 from i18n import Localizer,LANGUAGES,set_language as activate_language,tr
 from pt_br import HELP_PT_BR
 from screenshot_retention import prune_screenshots
+from party_panel import PartyPanel
+from tutorial import Tutorial
+from update_checker import UpdatesPanel
 
 BG = '#0d1421'
 PANEL = '#182235'
@@ -73,6 +76,7 @@ class App(tk.Tk):
         self.next_screenshot_cleanup=0
         self.fields = {}
         self.style()
+        self.tutorial=Tutorial(self)
         self.header()
         self.workspace=ttk.Frame(self);self.workspace.pack(fill='both',expand=True)
         self.navigation=ttk.Frame(self.workspace,style='Sidebar.TFrame',padding=(12,20));self.navigation.pack(side='left',fill='y')
@@ -114,6 +118,9 @@ class App(tk.Tk):
         self.analytics_tab=ttk.Frame(self.tabs,padding=18)
         self.tabs.insert(3,self.analytics_tab,text='  Analytics  ')
         self.analytics=AnalyticsPanel(self,self.analytics_tab)
+        self.party_tab=ttk.Frame(self.tabs,padding=18)
+        self.tabs.insert(4,self.party_tab,text='  Party  ')
+        self.party=PartyPanel(self,self.party_tab)
         self.build_navigation()
         ttk.Label(self, textvariable=self.status, foreground=MUTED).pack(anchor='w', padx=28, pady=(0, 12))
         self.restore_draft()
@@ -125,6 +132,7 @@ class App(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self.close)
         self.tick_id = self.after(100, self.tick)
         self.map_input_tick_id = self.after(16, self.poll_map_input)
+        if hotkeys:self.after(900,self.tutorial.first_use)
         if self.hk and self.hk.failed:
             self.status.set('Some shortcuts are already in use. Capture buttons and image import still work.')
 
@@ -194,7 +202,7 @@ class App(tk.Tk):
     def build_navigation(self):
         ttk.Label(self.navigation,text='WORKSPACE',style='Sidebar.TLabel',font=('Segoe UI Semibold',9)).pack(anchor='w',padx=14,pady=(0,18))
         self.navigation_buttons=[]
-        for index,title in enumerate(('Overview','Map & routes','Run history','Analytics','Settings','Help')):
+        for index,title in enumerate(('Overview','Map & routes','Run history','Analytics','Party','Settings','Help')):
             button=ttk.Button(self.navigation,text=title,style='Nav.TButton',command=lambda i=index:self.tabs.select(i))
             button.pack(fill='x',pady=3);self.navigation_buttons.append(button)
         self.nav_hint=tk.StringVar(value=f'CAPTURE\n{self.shortcut_hint("capture")}\n\nOVERLAY\n{self.shortcut_hint("overlay")}')
@@ -209,6 +217,7 @@ class App(tk.Tk):
     def header(self):
         header = ttk.Frame(self, padding=(28, 20, 28, 12))
         header.pack(fill='x')
+        ttk.Button(header,text='?',width=3,command=self.tutorial.open).pack(side='right',anchor='n')
         ttk.Label(header, text='ANIIMO  /  EGGHEIST COMPANION', foreground=ACCENT,
                   font=('Segoe UI Semibold', 10)).pack(anchor='w')
         self.run_heading=tk.StringVar(value='Between runs')
@@ -367,13 +376,21 @@ class App(tk.Tk):
         self.spend_tree.pack(fill='x')
 
     def build_settings(self):
-        language_box=ttk.LabelFrame(self.settings_tab,text='Interface language',padding=10)
+        settings_root=self.settings_tab
+        section_bar=ttk.Frame(settings_root);section_bar.pack(fill='x',pady=(0,18))
+        self.settings_sections={title:ttk.Frame(settings_root) for title in ('General','Goals & budget','Shortcuts','Storage & updates')}
+        self.settings_section=tk.StringVar(value='General')
+        for title in self.settings_sections:
+            ttk.Radiobutton(section_bar,text=title,value=title,variable=self.settings_section,command=self.show_settings_section,style='Chip.TRadiobutton').pack(side='left',padx=(0,6))
+        general,planning,controls,storage_page=self.settings_sections.values()
+        self.updates=UpdatesPanel(self,storage_page)
+        language_box=ttk.LabelFrame(general,text='Interface language',padding=10)
         language_box.pack(fill='x',pady=(0,16))
         self.language_var=tk.StringVar(value=self.ledger.settings().get('language','en'))
         for language,label in LANGUAGES.items():
             ttk.Radiobutton(language_box,text=label,value=language,variable=self.language_var,command=lambda:self.set_language(self.language_var.get())).pack(side='left',padx=(0,18))
-        ttk.Label(self.settings_tab,text='Changes apply immediately. Your data and shortcuts stay the same.',style='Muted.TLabel').pack(anchor='w',pady=(0,12))
-        shortcuts=ttk.LabelFrame(self.settings_tab,text='Shortcuts',padding=10)
+        ttk.Label(general,text='Changes apply immediately. Your data and shortcuts stay the same.',style='Muted.TLabel').pack(anchor='w',pady=(0,12))
+        shortcuts=ttk.LabelFrame(controls,text='Shortcuts',padding=10)
         shortcuts.pack(fill='x',pady=(0,16))
         ttk.Label(shortcuts,text='Type a key or combination, such as ;, F8 or Ctrl+Shift+F8. Leave blank to disable.\nGame keys act only while Aniimo is focused and still reach the game. Map/close-map keys must match your game settings.',style='Muted.TLabel',wraplength=950).grid(row=0,column=0,columnspan=3,sticky='w',pady=(0,8))
         self.shortcut_vars={}
@@ -386,8 +403,8 @@ class App(tk.Tk):
         ttk.Button(keys_bar,text='Save shortcuts',command=self.save_shortcuts,style='Accent.TButton').pack(side='left')
         ttk.Button(keys_bar,text='Restore default shortcuts',command=self.reset_shortcuts).pack(side='left',padx=8)
         self.setting_vars = {}
-        storage=ttk.LabelFrame(self.settings_tab,text='Screenshot storage',padding=10)
-        storage.pack(fill='x',pady=(0,16),before=shortcuts)
+        storage=ttk.LabelFrame(storage_page,text='Screenshot storage',padding=10)
+        storage.pack(fill='x',pady=(0,16))
         ttk.Label(storage,text='Keep screenshots for last X runs (0 = none)').pack(anchor='w')
         storage_row=ttk.Frame(storage);storage_row.pack(anchor='w',pady=(6,5))
         self.setting_vars['screenshot_runs']=tk.StringVar(value=str(self.ledger.settings()['screenshot_runs']))
@@ -395,7 +412,7 @@ class App(tk.Tk):
         self.retention_button=ttk.Button(storage_row,text='Apply screenshot limit',command=self.save_screenshot_setting)
         self.retention_button.pack(side='left',padx=10)
         ttk.Label(storage,text='Default 30. Older screenshots are deleted automatically; run history and the current draft stay saved.',style='Muted.TLabel',wraplength=850).pack(anchor='w')
-        grid = ttk.Frame(self.settings_tab)
+        grid = ttk.Frame(planning)
         grid.pack(fill='x')
         specs = [('target', 'Target rank'), ('deadline', 'Deadline (YYYY-MM-DD, inclusive)'),
                  ('points_per_rank', 'Points per rank'), ('daily_tickets', 'Tickets to buy per day'),
@@ -420,8 +437,8 @@ class App(tk.Tk):
             ttk.Entry(box, textvariable=var).pack(fill='x', pady=2)
         for col in (0, 1):
             grid.columnconfigure(col, weight=1)
-        screen_box = ttk.Frame(grid)
-        screen_box.grid(row=len(specs)//2, column=len(specs)%2, sticky='ew', padx=(0, 20), pady=5)
+        screen_box = ttk.LabelFrame(general,text='Game capture',padding=12)
+        screen_box.pack(fill='x',pady=12)
         ttk.Label(screen_box, text='Capture display (Windows display name)', style='Muted.TLabel').pack(anchor='w')
         self.screens = monitors()
         self.monitor_choice = ttk.Combobox(screen_box, state='readonly', values=[
@@ -430,20 +447,30 @@ class App(tk.Tk):
         self.monitor_choice.pack(fill='x', pady=2)
         self.monitor_choice.current(min(settings['monitor'], len(self.screens)-1))
         self.budget_party=tk.BooleanVar(value=settings['budget_party'])
-        ttk.Checkbutton(self.settings_tab,text='Party budget (use party key count)',variable=self.budget_party).pack(anchor='w')
-        ttk.Label(self.settings_tab, text='Daily ticket prices, first through twentieth (editable community values)',
+        ttk.Checkbutton(planning,text='Party budget (use party key count)',variable=self.budget_party).pack(anchor='w')
+        ttk.Label(planning, text='Daily ticket prices, first through twentieth (editable community values)',
                   style='Muted.TLabel').pack(anchor='w', pady=(16, 4))
         self.price_var = tk.StringVar(value=', '.join(str(n) for n in (settings['prices'] or PRICES)))
-        ttk.Entry(self.settings_tab, textvariable=self.price_var).pack(fill='x')
-        ttk.Label(self.settings_tab, text='Use Correct current stats to set your rank, progress, tickets or actual balance directly.\n'
+        ttk.Entry(planning, textvariable=self.price_var).pack(fill='x')
+        ttk.Label(planning, text='Use Correct current stats to set your rank, progress, tickets or actual balance directly.\n'
                   'Averages use successful runs, including daily bonuses; failed runs are excluded.\n'
                   'Ticket purchases are logged manually; the daily target is used only for planning.',
                   style='Muted.TLabel', wraplength=1000).pack(anchor='w', pady=16)
-        bar = ttk.Frame(self.settings_tab)
-        bar.pack(fill='x')
+        self.show_settings_section()
+        bar = self.settings_save_bar = ttk.Frame(settings_root)
+        bar.pack(fill='x',pady=(16,0))
         ttk.Button(bar, text='Save settings', command=self.save_settings, style='Accent.TButton').pack(side='left')
         ttk.Button(bar, text='Correct current stats', command=self.correct_stats_dialog).pack(side='left', padx=8)
         ttk.Button(bar, text='Open data folder', command=lambda: os.startfile(self.data_dir)).pack(side='left', padx=8)
+
+    def show_settings_section(self):
+        for title,frame in self.settings_sections.items():
+            frame.pack_forget()
+        frame=self.settings_sections[self.settings_section.get()]
+        # Keep the shared save controls below the selected section.
+        bar=getattr(self,'settings_save_bar',None)
+        if bar:frame.pack(fill='x',before=bar)
+        else:frame.pack(fill='x')
 
     def shortcut_hint(self,action):
         return self.shortcuts[action] or 'not assigned'
@@ -782,6 +809,8 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         self.map_input_tick_id = self.after(16, self.poll_map_input)
 
     def tick(self):
+        self.updates.tick()
+        self.party.tick()
         self.sanctum.tick()
         self.update_run_status()
         if self.hk:
@@ -1437,6 +1466,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         self.after_cancel(self.tick_id)
         self.after_cancel(self.map_input_tick_id)
         self.sanctum.close()
+        self.party.close()
         self.localizer.close()
         self.persist_draft()
         if self.hk:
@@ -1445,6 +1475,46 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
 
 
 if __name__ == '__main__':
+    if '--first-use-self-test' in sys.argv:
+        # Isolated clean-install check. The caller must supply a disposable map
+        # directory; this path never modifies the player's ledger or settings.
+        import tempfile
+        report_path=Path(sys.argv[sys.argv.index('--first-use-self-test')+1])
+        try:
+            if not os.environ.get('ANIIMO_MAP_ASSETS'):raise ValueError('Temporary map directory required')
+            with tempfile.TemporaryDirectory() as directory:
+                app=App(directory,hotkeys=False)
+                assert not app.sanctum.assets_ready
+                app.tutorial.first_use();app.update()
+                assert app.tutorial.window is not None
+                for index in (1,2,3):
+                    app.tutorial.index=index;app.tutorial.show();app.update()
+                    assert app.tutorial.image is not None
+                app.tutorial.close();app.tutorial.first_use()
+                assert app.tutorial.window is None
+                app.tutorial.open();app.update();app.tutorial.close()
+                app.sanctum.map_setup.download()
+                deadline=time.monotonic()+240
+                while app.sanctum.map_setup.busy and time.monotonic()<deadline:
+                    app.update();time.sleep(.03)
+                assert app.sanctum.assets_ready,app.sanctum.map_setup.label.cget('text')
+                assert app.sanctum.maps.model(32).layout==32
+                from unittest.mock import patch
+                app.tabs.select(1);app.update()
+                with patch('sanctum_panel.app_is_foreground',return_value=True),patch('sanctum_panel.game_is_foreground',return_value=False):
+                    app.sanctum.opacity.set(45);app.sanctum.overlay_size.set(440)
+                    app.sanctum.adjust_overlay();app.update()
+                    assert app.sanctum.overlay.visible
+                    assert abs(app.sanctum.overlay.window.attributes('-alpha')-.45)<.02
+                    assert app.sanctum.overlay.window.winfo_width()==440
+                    assert app.sanctum.engine is None and not app.sanctum.session.map_confirmed
+                    app.tabs.select(2);app.sanctum.tick()
+                    assert not app.sanctum.overlay.visible
+                app.close()
+            report_path.write_text(json.dumps(dict(ok=True,tutorial=True,first_use_once=True,reopen=True,map_download=True,overlay_preview=True)),encoding='utf-8')
+        except Exception as exc:
+            report_path.write_text(json.dumps(dict(ok=False,error=repr(exc))),encoding='utf-8')
+        sys.exit()
     if '--sanctum-view' in sys.argv:
         from sanctum_view import run_viewer
         control = Path(sys.argv[sys.argv.index('--sanctum-view')+1])
@@ -1717,6 +1787,23 @@ if __name__ == '__main__':
                     raise RuntimeError('Screenshot retention changed data or removed draft evidence')
                 if app.setting_vars['screenshot_runs'].get()!='30':raise RuntimeError('Screenshot storage setting missing')
                 real_checks['screenshot_retention']=True
+                if '--party-server-test' in sys.argv:
+                    party=app.party
+                    party.mode.set('custom');party.address.set(sys.argv[sys.argv.index('--party-server-test')+1])
+                    party.name.set('Packaged check');party.connect()
+                    def party_wait(predicate):
+                        deadline=time.monotonic()+10
+                        while time.monotonic()<deadline:
+                            app.update();time.sleep(.01)
+                            if predicate():return
+                        raise RuntimeError('Packaged party network check timed out: '+party.status.get())
+                    party_wait(lambda:party.connected and party.state)
+                    app.sanctum.session.enable(True);app.sanctum.session.resume()
+                    party.observed_layout(32,dict(map_screen=True,candidates=[32],scores=dict(orange=.91,blue=.9)))
+                    party_wait(lambda:party.state['layout']==32 and app.sanctum.engine is not None and app.sanctum.engine.layout==32)
+                    party.difficulty.set('Hard');party.difficulty_changed()
+                    party_wait(lambda:party.state['difficulty']=='Hard' and party.state['layout'] is None)
+                    party.leave();real_checks['party_network']=True
                 app.close()
                 report_path.write_text(json.dumps(dict(ok=True, ocr=ocr, rank=state['rank'], tickets=state['tickets'], coins=state['coins'],vision_layout=32,local_layouts=len(ALL_LAYOUTS),map_preferences=True,solo_18_break_even=round(budget['per_run']),recovered_same_run=True,optional_start=True,map_only=True,points_only=True,free_tickets=True,**real_checks)), encoding='utf-8')
         except Exception as exc:

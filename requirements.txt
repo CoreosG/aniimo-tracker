@@ -9,3 +9,4 @@ winrt-Windows.Graphics.Imaging==3.2.1
 winrt-Windows.Media.Ocr==3.2.1
 pywebview==6.2.1
 opencv-python-headless==5.0.0.93
+websockets==15.0.1

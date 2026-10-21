@@ -3,6 +3,35 @@ from map_engine import MapEngine
 
 
 class MapOptionsTests(unittest.TestCase):
+    def test_exit_preference_applies_to_both_entrances(self):
+        model=MapEngine(39)
+        for start in (0,1):
+            for exit,name in ((0,'orange'),(1,'blue')):
+                self.assertEqual(model.route(start,goal='eggs',exit=name)['stops'][-1],model.routes['pts'][exit])
+
+    def test_rich_rooms_and_trials_are_distinct_route_goals(self):
+        model=MapEngine(32)
+        for goal,kind in (('rich','room'),('trials','challenge')):
+            for entrance in (0,1):
+                route=model.route(entrance,goal=goal,rooms=2)
+                count=min(2,sum(p['k']==kind for p in model.routes['pts']))
+                self.assertEqual(sum(p['k']==kind for p in route['stops']),count)
+                self.assertTrue(all(p['k'] in ('door',kind) for p in route['stops']))
+
+    def test_monsters_and_legend_can_be_toggled(self):
+        model=MapEngine(32)
+        options=dict(goal='none',icons=dict(keys=False,eggs=False,trials=False,chests=False,monsters=False))
+        plain=model.render(**options).tobytes()
+        self.assertTrue(plain!=model.render(**{**options,'icons':dict(options['icons'],monsters=True)}).tobytes())
+        self.assertTrue(plain!=model.render(**options,legend=True).tobytes())
+
+    def test_player_marker_is_a_circle_without_an_implied_heading(self):
+        model=MapEngine(39)
+        image=model.render((500,500),player=[50,50],live=True,goal='none',
+                           icons=dict(keys=False,eggs=False,trials=False,chests=False))
+        self.assertEqual(image.getpixel((250,260)),(255,255,255))
+        self.assertEqual(image.getpixel((250,240)),(255,255,255))
+
     def test_default_map_shows_both_entrance_alternatives(self):
         model=MapEngine(39)
         options=dict(size=model.image.size,icons=dict(keys=False,eggs=False,trials=False,chests=False))

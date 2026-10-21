@@ -21,3 +21,7 @@ small recognition crops contain only UI markers, without player identifiers.
 
 Runtime libraries are listed in `requirements.txt`. Their licenses and any
 binary-distribution notices must be preserved when packaging the application.
+
+## Tutorial examples
+
+The three tutorial images are anonymized, imagegen-assisted edits of player-supplied Aniimo screenshots. Account identifiers, overlays and embedded metadata were removed before inclusion. They are instructional examples, not OCR calibration fixtures. Aniimo artwork remains the property of its owners. Source screenshots are not distributed.

@@ -1,3 +1,4 @@
+from asset_paths import ASSETS
 """Read-only loopback server for the user's offline AniimoTools copy."""
 from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
@@ -13,7 +14,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def serve():
-    folder=Path(__file__).with_name('assets')/'simulator'
+    folder=ASSETS/'simulator'
     server=ThreadingHTTPServer(('127.0.0.1',0),partial(Handler,directory=str(folder)))
     threading.Thread(target=server.serve_forever,daemon=True).start()
     return server,f'http://127.0.0.1:{server.server_port}/index.html'

@@ -1,7 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('assets','assets')]
+datas = [(f'assets/{name}','assets') for name in ('blue.png','orange.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json')]
+datas += [('assets/tutorial','assets/tutorial')]
 binaries = []
 hiddenimports = ['clr', 'webview.platforms.winforms', 'webview.platforms.edgechromium']
 tmp_ret = collect_all('winrt')
@@ -37,7 +38,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Aniimo Tracker',
+    name='AniimoTracker',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

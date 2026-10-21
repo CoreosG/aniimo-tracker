@@ -118,7 +118,7 @@ def save(path, content):
     temporary.replace(path)
 
 
-def install(destination):
+def install(destination, progress=print):
     html = fetch(PAGE).decode('utf-8')
     match = re.search(r'src=["\']([^"\']*LostSanctumPage[^"\']*\.js)["\']', html)
     if not match: raise ValueError('AniimoTools page changed: planner module not found')
@@ -138,7 +138,7 @@ def install(destination):
             save(simulator / f'{kind}-{layout}.json', json.dumps(data).encode('utf-8'))
         image = fetch(SITE + f'/assets/lost-sanctum/maps/200{layout}-full.webp')
         save(simulator / f'assets/lost-sanctum/maps/200{layout}-full.webp', image)
-        print(f'Installed layout {layout}', flush=True)
+        progress(f'Installed layout {layout}')
     # These unannotated references match the game floor texture used by SIFT.
     for layout in HIGH_TIER:
         save(destination / f'map-{layout}.webp', fetch(f'https://aniimo.kr/map/sanctums/sanctum_{layout}.webp'))
@@ -148,7 +148,7 @@ def install(destination):
         'AniimoTools, MOANIIMO and the game owners retain their respective rights.\n'
         'Downloaded files are excluded from this Git repository.\n'
     ).encode('utf-8'))
-    print('Map setup complete. Restart the tracker. Files stay local.', flush=True)
+    progress('Map pack ready. Open the game map to begin.')
 
 
 if __name__ == '__main__':

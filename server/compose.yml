@@ -1,0 +1,32 @@
+services:
+  party:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: eggheist-party:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      PARTY_MAX_ROOMS: "1000"
+      PARTY_MAX_CONNECTIONS: "3200"
+      PARTY_PER_IP: "30"
+      # Only enable behind a trusted proxy; the published port is loopback-only.
+      PARTY_TRUST_PROXY: "1"
+    mem_limit: 512m
+    cpus: 1.5
+    pids_limit: 64
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=16m
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
