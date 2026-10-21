@@ -96,6 +96,7 @@ class SanctumPanel:
         self.last_capture_status=''
         self.map_feedback='Identifying map…'
         self.capture_status=tk.BooleanVar(value=self.config.get('capture_status',True))
+        self.always_status=tk.BooleanVar(value=self.config.get('always_status',False))
         self.unconfirmed_trials=tk.BooleanVar(value=self.config.get('unconfirmed_trials',False))
         self.next_screen_probe=0
         self.overlay_enabled=tk.BooleanVar(value=self.config.get('overlay_enabled',True))
@@ -187,6 +188,7 @@ class SanctumPanel:
         self.advanced=options
         ttk.Checkbutton(options,text='Live overlay preview',variable=self.preview_overlay,command=self.tick,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
         ttk.Checkbutton(options,text='Capture / save status in overlay',variable=self.capture_status,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
+        ttk.Checkbutton(options,text='Keep status bar between runs',variable=self.always_status,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
         for title,var,lo,hi in [('Opacity',self.opacity,15,100),('Overlay size',self.overlay_size,350,950),('Zoom',self.zoom,1,3)]:
             row=ttk.Frame(options,style='Panel.TFrame');row.pack(fill='x',pady=(9,0))
             ttk.Label(row,text=title,style='Panel.TLabel').pack(side='left')
@@ -308,7 +310,7 @@ class SanctumPanel:
         self.config.update(enabled=self.enabled.get(),party=self.party.get(),route_keys=int(self.keys.get()),
             standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),route_rooms=int(self.route_rooms.get()),route_exit=self.route_exit.get(),legend=self.legend.get(),icons={k:v.get() for k,v in self.icon_vars.items()},
             overlay_enabled=self.overlay_enabled.get(),opacity=round(self.opacity.get()),overlay_size=round(self.overlay_size.get()),
-            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),unconfirmed_trials=self.unconfirmed_trials.get())
+            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),always_status=self.always_status.get(),unconfirmed_trials=self.unconfirmed_trials.get())
         self.config['position_interval']=1.5 if self.refresh_mode.get()=='Low CPU (1.5s)' else .7
         self.overlay_dirty=True
         if hasattr(self,'count_spins'):
@@ -578,8 +580,9 @@ class SanctumPanel:
         if previewing!=self.last_previewing:
             self.last_previewing=previewing;self.overlay_dirty=True
         waiting=self.session.watching and self.session.context_id is not None and not self.session.map_confirmed
-        header_only=self.map_open or self.map_rescan_pending
-        show=previewing or (self.overlay_enabled.get() and (arranging or (in_game and (waiting or (self.session.watching and header_only) or (self.session.can_track_minimap and self.engine)))))
+        idle_bar=self.always_status.get() and not self.session.watching
+        header_only=self.map_open or self.map_rescan_pending or idle_bar
+        show=previewing or (self.overlay_enabled.get() and (arranging or (in_game and (idle_bar or waiting or (self.session.watching and header_only) or (self.session.can_track_minimap and self.engine)))))
         if not show:self.overlay.hide()
         elif self.overlay_dirty or not self.overlay.visible:
             self.show_overlay(header_only=header_only and not previewing,preview=previewing)
@@ -606,9 +609,16 @@ class SanctumPanel:
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
+        if self.always_status.get() and not self.session.watching and not preview:
+            label='Tracker ready'
+            if not details:
+                details='\n'+self.app.shortcut_hint('capture')+' capture to start'
+            elif not self.app.ledger.active_start() and not any(self.app.fields[k].get().strip() for k in ('money','points')):
+                label='Ready · '+self.app.shortcut_hint('capture')+' capture to start'
+                details=''
         # Map feedback already describes the current view; omit duplicate
         # waiting/run text so the bar stays at two short lines.
-        if header_only and details:details='\n'+details.partition('\n')[2]
+        if header_only and details and self.session.watching:details='\n'+details.partition('\n')[2]
         self.overlay.show(image,(*position,0,0),self.opacity.get()/100,label,details=details)
 
     def scan(self, explicit=False,minimap=False):

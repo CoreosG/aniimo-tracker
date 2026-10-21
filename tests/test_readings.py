@@ -3,6 +3,18 @@ from readings import parse_amount, single_amount
 
 
 class ReadingTests(unittest.TestCase):
+    def test_pre_emperor_ranking_labels_identify_one_signed_award(self):
+        from readings import rank_points_reading
+        for label in ('Pontos de ranque', 'Rank points', 'Ranking points'):
+            with self.subTest(label=label):
+                self.assertEqual(rank_points_reading(f'Explorador\n{label}\n12000/12500\n+170'), 170)
+                self.assertEqual(rank_points_reading(f'Explorer\n{label}\n12000/12500\n−140'), -140)
+        for text in ('Explorer\n12000/12500\n+170',
+                     'Pontos de ranque\n+170',
+                     'Pontos de ranque\n12000/12500\n+170\n+200'):
+            with self.subTest(text=text):
+                self.assertIsNone(rank_points_reading(text))
+
     def test_ranking_change_keeps_sign_and_ignores_lifetime_total(self):
         from readings import rank_points_reading
         self.assertEqual(rank_points_reading('Imperador dos Ovos\n52530/52710\n+370\nPontos de ranque x2'),370)

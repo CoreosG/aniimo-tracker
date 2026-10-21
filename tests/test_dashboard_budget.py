@@ -11,8 +11,9 @@ class DashboardBudgetTests(unittest.TestCase):
             app=App(directory,hotkeys=False)
             try:
                 app.ledger.configure(rank=500,rank_points=0,target=1000)
+                app.ledger.correct_stats(lifetime_points=104550)
                 app.refresh()
-                self.assertEqual(app.goal_progress_text.get(),'Rank 500 / 1,000 · 50.0%')
+                self.assertEqual(app.goal_progress_text.get(),'Total points 104,550 / 194,550 · 53.7%')
                 self.assertLessEqual(len(app.goal_details_text.get().splitlines()),3)
                 self.assertIn('Estimated playtime:',app.playtime_text.get())
             finally:app.close()

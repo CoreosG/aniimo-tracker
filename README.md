@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/branding/icon.png" width="112" alt="Eggheist Tracker icon">
   <h1>Aniimo Eggheist Tracker</h1>
-  <p>Track your runs. Plan your rank goal. Find your way through Lost Sanctum.</p>
+  <p>Track your runs. Plan your Emperor egg goal. Find your way through Lost Sanctum.</p>
   <p>
     <a href="https://github.com/CoreosG/aniimo-tracker/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/CoreosG/aniimo-tracker?style=flat-square&color=79dcc8"></a>
     <img alt="Windows 10 and 11" src="https://img.shields.io/badge/platform-Windows_10_%2F_11-8fbaff?style=flat-square">
@@ -15,8 +15,8 @@
 ## Get started
 
 1. Download **AniimoTracker.exe** from the [latest release](https://github.com/CoreosG/aniimo-tracker/releases/latest) and open it. **No Python required.**
-2. Follow the tutorial, enter your own current stats, and select your game monitor. Reopen the tutorial anytime with **?**.
-3. In **Map & routes**, click **Download map pack** once. The app downloads the maps directly from AniimoTools and MOANIIMO.
+2. Use the tutorial's **Set current stats** button to enter your **total Egg Heist points**, tickets and balance, then select your game monitor. You can set stats without starting a run. Reopen the tutorial anytime with **?**.
+3. Click **Download map pack** in the tutorial or **Map & routes** once. Maps download directly from AniimoTools and MOANIIMO in the background.
 
 **Updating?** Close the older tracker and open the new executable. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`. Check for updates in **Settings → Storage & updates**.
 
@@ -32,6 +32,8 @@
 | During navigation | **;** | Show or hide the overlay |
 
 All shortcuts are customizable. You can also start without a balance, enter a run manually, record only points, or use **map-only tracking**.
+
+Already using map-only tracking? Capturing Inventory starts a run with the observed balance. Capturing a result switches to result entry. You can save points-only results repeatedly without starting a run first.
 
 <details>
 <summary><b>See the capture screens</b></summary>
@@ -49,7 +51,7 @@ These are anonymized tutorial examples. Original player screenshots are not dist
 | Track and plan | Navigate and play together |
 | :--- | :--- |
 | Editable runs, failures, paid and free tickets | All 21 layouts across four difficulties |
-| Rank, ticket and remaining-playtime forecasts | Routes from both entrances; preferred exits |
+| Total points, Emperor eggs, tickets and remaining-playtime forecasts | Routes from both entrances; preferred exits |
 | Key, gear and daily ticket break-even budgets | Key doors, eggs, rich rooms or trials |
 | Loot, wallet, points and ticket graphs | Optional room icons, monsters and legend |
 | Estimated loot/hour, sortable run details and filtered CSV export | Low CPU position updates and cached minimap detection |
@@ -58,18 +60,24 @@ These are anonymized tutorial examples. Original player screenshots are not dist
 
 **Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory captures record your wallet after sales and shopping. Failed runs affect progression but stay out of the successful-run points average.
 
-### New in 0.3
+### New in 0.3.1
+
+**Total points come first**, including before Egg Emperor. Egg counts are derived automatically; optional calibration uses the total, eggs and progress shown on the same screen. The tutorial now includes setup buttons and annotated examples distinguishing total points from a run's award. Map-only captures switch into run tracking or result entry when needed.
+
+Want a compact status bar even while idle or paused? Enable **Map & routes → Overlay → Keep status bar between runs**. It is off by default and still follows the master **Show overlay** switch.
+
+### The 0.3 interface
 
 The break-even card shows one sales target per run, with a colored ticket/key/gear breakdown. Assumptions stay collapsed until you need them. Analytics adds Today and 90-day filters, per-run comparisons, editing and CSV export. Map controls are grouped into **Route**, **Icons**, **Overlay** and **Tools**.
 
 **Using a slower PC?** Choose **Map & routes → Overlay → Position updates → Low CPU (1.5s)**. Map identification and OCR work locally in background workers. Position tracking reuses the detected minimap area, while keeping the same geometric checks. See [performance notes](docs/PERFORMANCE.md) for measurements and limits.
 
-[What changed in 0.3.0 →](docs/CHANGELOG.md)
+[Release notes →](docs/CHANGELOG.md)
 
 <details>
 <summary><b>See the new analytics and budget</b></summary>
 <p>These previews use invented demo data.</p>
-<img src="assets/previews/goal.png" width="900" alt="Goal estimate with labeled rank progress and short assumptions">
+<img src="assets/previews/goal.png" width="900" alt="Total points, Emperor eggs and remaining-playtime goal estimate">
 <img src="assets/previews/analytics.png" width="900" alt="Analytics with estimated loot per hour, budget comparison and history charts">
 <img src="assets/previews/budget.png" width="900" alt="Compact break-even target with ticket, key and gear costs">
 </details>
@@ -79,6 +87,8 @@ The break-even card shows one sales target per run, with a colored ticket/key/ge
 Open **Party**, choose a username, then create a party or join an eight-character code. Up to three players share map identification and circular position markers through the default relay at **eggheist.banneret.app**. A custom server can be selected instead.
 
 Any member can start a **New shared run**; the host controls difficulty. A confirmed map in a new shared run can warn about an unfinished local run, even when the layout repeats. **Warn about unfinished runs** is optional, and map-only users do not receive ledger warnings. Navigation advances without saving or discarding anyone’s unfinished results.
+
+The relay forwards bounded navigation fields, not arbitrary commands, files or download links. It checks message size, rate, numeric ranges and packet structure. A teammate can still provide inaccurate map evidence or coordinates; share invite codes with intended teammates.
 
 [Party usage and privacy →](docs/USER_GUIDE.md#party-navigation) · [Self-hosting →](server/README.md) · [Capacity measurements →](server/CAPACITY.md)
 

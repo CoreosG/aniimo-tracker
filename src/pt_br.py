@@ -1,5 +1,32 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Map tracker active · capture Inventory to start a run, or capture/enter points and Save run.|Rastreador ativo · capture o inventário para iniciar uma partida, ou capture/informe os pontos e salve.
+Points ready · Save run to record this result. Loot is optional.|Pontos prontos · Salvar partida registra este resultado. Saque é opcional.
+Capture or enter points, then Save run.|Capture ou informe os pontos e salve a partida.
+Map-only tracking · capture Inventory to start a run, or capture points to log a result.|Rastreador de mapa · capture o inventário para iniciar uma partida, ou os pontos para registrar um resultado.
+Use Correct current stats to set total points, tickets or your actual balance.|Use Corrigir dados atuais para informar pontos totais, ingressos ou o saldo real.
+TOTAL POINTS|PONTOS TOTAIS
+Total Egg Heist points|Pontos totais do Egg Heist
+Egg Emperor|Imperador dos Ovos
+eggs|ovos
+points to Egg Emperor|pontos para Imperador dos Ovos
+Set your current total points|Informe seus pontos totais atuais
+Set your total points to calculate this goal.|Informe seus pontos totais para calcular esta meta.
+Total points|Pontos totais
+Target:|Meta:
+set your total points first|informe seus pontos totais primeiro
+Use the cumulative total on the points screen, not the +points earned in one run.|Use o total acumulado da tela de pontos, não o +pontos de uma partida.
+Advanced · calibrate eggs|Avançado · calibrar ovos
+Calibrate using the eggs shown in game|Calibrar usando os ovos mostrados no jogo
+Egg Emperor eggs|Ovos do Imperador
+Points into the next egg (0–179)|Progresso para o próximo ovo (0–179)
+Optional: enter the total, egg count and progress from the same screen. This calibrates the Egg Emperor threshold.|Opcional: informe o total, os ovos e o progresso da mesma tela para calibrar o início do Imperador dos Ovos.
+Calibrated threshold:|Limite calibrado:
+Enter your cumulative total points to see progression.|Informe seus pontos totais acumulados para ver a progressão.
+Egg Emperor threshold must be a non-negative whole number.|O início do Imperador dos Ovos deve ser um número inteiro não negativo.
+Total points cannot be below the entered Egg Emperor progress.|Os pontos totais não podem ser menores que o progresso do Imperador informado.
+Target Emperor eggs|Meta de ovos do Imperador
+Points per Emperor egg|Pontos por ovo do Imperador
 Assumes daily ticket purchases. Daily time includes days off.|Pressupõe compras diárias de ingressos. O tempo diário inclui dias sem jogar.
 Selected display is disconnected; choose a display in Settings.|O monitor selecionado foi desconectado; escolha outro nas Configurações.
 Today|Hoje
@@ -450,6 +477,10 @@ Chest rooms|Salas de baús
 Include unconfirmed trials (?)|Incluir desafios não confirmados (?)
 Display & advanced|Exibição e opções avançadas
 Capture / save status in overlay|Capturas e salvamento na barra
+Keep status bar between runs|Manter barra entre partidas
+Tracker ready|Aplicativo pronto
+Ready ·|Pronto ·
+ capture to start| capture para iniciar
 Opacity|Opacidade
 Overlay size|Tamanho da sobreposição
 Zoom|Zoom
@@ -762,35 +793,35 @@ HELP_PT_BR='''COMO REGISTRAR SUAS PARTIDAS
 2. Após as compras, capture o inventário com {capture} para iniciar com o saldo observado. O botão Iniciar partida também aceita um saldo manual ou vazio. Uma captura não reconhecida inicia sem saldo quando não há partida ativa nem resultado pendente. Iniciar ainda não consome um ticket.
 3. Dentro do Santuário, abra o mapa com {map}, mostrando os dois portais. A barra indica Identificando mapa… e depois a variante confirmada. O mapa da sobreposição fica oculto enquanto o mapa do jogo está aberto. Ao fechar o mapa, a sobreposição acompanha o minimapa. Um minimapa no lobby não confirma a variante.
 4. Ao terminar, use {capture} nas telas de saque e pontos, ou preencha os valores manualmente. Os pontos são obrigatórios; o saque é opcional. Saque vazio significa desconhecido, não zero. As capturas entram em uma fila de leitura local.
-5. Confira o resultado e clique em Salvar partida, ou pressione {save} quando os pontos estiverem prontos. O atalho aguarda a leitura terminar e aceita pontos sem saque. Salvar conta o resultado e o ticket uma vez, encerra o acompanhamento e oculta a sobreposição.
+5. Confira o resultado e clique em Salvar partida, ou pressione {save} quando os pontos estiverem prontos. O atalho aguarda a leitura terminar e aceita pontos sem saque. Salvar conta o resultado e o ticket uma vez e encerra o acompanhamento. Com Manter barra entre partidas ativado, a barra permanece no jogo; o mapa fica oculto até iniciar outro acompanhamento.
 
 DERROTAS E CORREÇÕES
 
 Para uma derrota, marque Derrota e informe a perda como um valor positivo (140), ou digite -140 diretamente. Para uma derrota sem perda, informe 0 e mantenha a opção marcada. Perdas reduzem seu progresso e usam o ticket, mas ficam fora da média de pontos das vitórias. Uma leitura positiva com sinal de mais remove uma marcação de derrota anterior.
 
-Corrigir dados atuais ajusta ranque, progresso, tickets e saldo sem apagar o histórico. Os eventos anteriores já estão incluídos nos valores corrigidos. Para corrigir um resultado antigo, vá ao Histórico de partidas e use Editar partida selecionada, ou dê dois cliques na linha. Correções de dados mais recentes continuam tendo prioridade.
+Corrigir dados atuais ajusta pontos totais, tickets e saldo sem apagar o histórico. Os eventos anteriores já estão incluídos nos valores corrigidos. Os ovos do Imperador são calculados após atingir o limite dessa categoria. Em Avançado, você pode calibrar usando os pontos totais, ovos e progresso mostrados na mesma tela do jogo. Para corrigir um resultado antigo, vá ao Histórico de partidas e use Editar partida selecionada, ou dê dois cliques na linha. Correções de dados mais recentes continuam tendo prioridade.
 
 MAPA E SOBREPOSIÇÃO
 
-Iniciar acompanhamento do mapa permite usar só o mapa, sem registrar partidas, saldo ou resultados. Pausar mapa e Retomar mapa usam o mesmo botão e atalho. Pausar mantém a variante detectada. Para sair do modo só de mapa, use Mapa e rotas > Encerrar sessão só de mapa, ou inicie uma partida.
+Iniciar acompanhamento do mapa permite usar só o mapa, sem registrar uma partida. Pausar mapa e Retomar mapa usam o mesmo botão e atalho. Pausar mantém a variante detectada. Capturar o inventário inicia uma partida com o saldo observado, mesmo nesse modo. Capturar ou digitar pontos permite salvar um resultado sem saldo ou saque. Iniciar partida também funciona com saldo vazio.
 
 As dificuldades Iniciante e Difícil têm seus próprios mapas. Pesadelo e Caos compartilham sete variantes. A dificuldade selecionada só altera o reconhecimento e o planejamento, não a dificuldade dentro do jogo.
 
 As duas rotas são alternativas independentes: laranja contínuo começa no portal laranja; azul tracejado começa no portal azul. Cada rota procura cumprir a quantidade de salas com chave e/ou ninhos solicitada e terminar na saída mais próxima. Ninhos indicam locais possíveis de ovos. Os ícones de portas, ovos, desafios e baús podem ser mostrados separadamente. Desafios não confirmados ficam ocultos por padrão e aparecem com ? quando habilitados.
 
-Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Mapa e rotas. Atalhos podem ser alterados nas Configurações sem reiniciar.
+Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Mapa e rotas. Manter barra entre partidas mostra uma barra compacta enquanto Aniimo estiver em primeiro plano, mesmo sem partida ativa. Atalhos podem ser alterados nas Configurações sem reiniciar.
 
 CAPTURA E LEITURA DE TEXTO
 
 O reconhecimento usa somente capturas de tela e leitura de texto neste PC. Também é possível importar imagens e informar todos os valores manualmente. Se uma captura sair preta em tela cheia exclusiva, tente o modo sem bordas ou em janela. As áreas de leitura podem precisar de ajustes ao mudar a resolução ou escala da interface.
 
-O saque é procurado junto ao título Saque da partida na tela de resultado; a área salva serve como alternativa. Os pontos usam preferencialmente a variação com sinal no resultado completo de Imperador dos Ovos, separada dos pontos acumulados. Isso evita confundir um sinal de mais recortado com um sinal de menos. Confira os valores antes de salvar.
+O saque é procurado junto ao título Saque da partida na tela de resultado; a área salva serve como alternativa. Os pontos usam a variação com sinal no resultado completo do Egg Heist, separada dos pontos acumulados, inclusive nas categorias anteriores a Imperador dos Ovos. Isso evita confundir um sinal de mais recortado com um sinal de menos. Confira os valores antes de salvar.
 
 Valores como 9637,5 K significam aproximadamente 9.637.500 moedas. O jogo pode arredondar o saldo exibido. Use os dígitos completos quando souber o saldo exato. As entradas aceitam valores inteiros e abreviações com K ou M. Datas de entrada usam AAAA-MM-DD.
 
 PLANEJAMENTO E MOEDAS
 
-Imperador dos Ovos usa 180 pontos por ranque. O contador acumulado inclui os ranques anteriores e não deve ser dividido diretamente por 180. Os pontos restantes são calculados pelo ranque atual e seu progresso.
+O progresso usa os pontos totais acumulados desde a primeira categoria. O limite inicial de Imperador dos Ovos é 14.550 pontos; depois dele, cada ovo exige 180 pontos. Calibrações existentes são preservadas. Em Corrigir dados atuais > Avançado, você pode calibrar com os pontos totais, ovos do Imperador e progresso mostrados no mesmo resultado. Antes de atingir o limite, o painel mostra os pontos que faltam; depois, mostra também os ovos. A meta usa os pontos até o limite e os ovos desejados.
 
 O valor do saque não é dinheiro recebido. Você pode guardar itens, vendê-los depois ou receber outro valor na venda. O saldo observado no inventário tem prioridade. Compras e gastos registrados depois reduzem a estimativa; o saque nunca é somado automaticamente à carteira. A diferença entre saldos iniciais inclui todas as vendas e compras entre as observações, não o lucro isolado de uma partida.
 

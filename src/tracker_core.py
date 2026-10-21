@@ -15,6 +15,7 @@ DEFAULTS = dict(rank=177, rank_points=0, tickets=105, target=1000,
                 budget_party=False, play_days_week=7, runs_per_play_day=0,
                 run_minutes=12, extra_minutes=0, screenshot_runs=30)
 PRICES = [20000, 50000, 70000] + [100000] * 3 + [200000] * 4 + [300000] * 5 + [400000] * 5
+EMPEROR_THRESHOLD = 14550
 
 
 def _failed_result(points, failed):
@@ -93,6 +94,13 @@ class Ledger:
                 db.execute('ALTER TABLE corrections ADD COLUMN estimated INTEGER DEFAULT 0')
             if 'reward_cutoff' not in {row['name'] for row in db.execute('PRAGMA table_info(corrections)')}:
                 db.execute('ALTER TABLE corrections ADD COLUMN reward_cutoff INTEGER DEFAULT 0')
+            if 'lifetime_points' not in {row['name'] for row in db.execute('PRAGMA table_info(corrections)')}:
+                db.execute('ALTER TABLE corrections ADD COLUMN lifetime_points INTEGER')
+                saved = db.execute('SELECT value FROM settings WHERE id=1').fetchone()
+                previous = {**DEFAULTS, **(json.loads(saved[0]) if saved else {})}
+                if previous['lifetime_offset'] is not None:
+                    db.execute('UPDATE corrections SET lifetime_points=?+rank*?+rank_points',
+                               (previous['lifetime_offset'], previous['points_per_rank']))
 
     @contextmanager
     def connect(self):
@@ -111,6 +119,8 @@ class Ledger:
 
     def configure(self, **changes):
         settings = {**self.settings(), **changes}
+        if settings['lifetime_offset'] is not None and (type(settings['lifetime_offset']) is not int or settings['lifetime_offset']<0):
+            raise ValueError('Egg Emperor threshold must be a non-negative whole number.')
         if type(settings['screenshot_runs']) is not int or settings['screenshot_runs']<0:
             raise ValueError('Screenshot retention must be a non-negative whole number.')
         for key in ('points_per_rank', 'normal_points', 'first_points'):
@@ -223,11 +233,13 @@ class Ledger:
     def correct_stats(self, *, rank=None, rank_points=None, tickets=None, coins=None,
                       lifetime_points=None, reason='Manual correction', approximate=None):
         state, settings = self.summary(), self.settings()
+        rank_entered = rank is not None or rank_points is not None
+        threshold = state['emperor_threshold']
         if lifetime_points is not None:
-            if not isinstance(lifetime_points, int) or lifetime_points < 0:
+            if type(lifetime_points) is not int or lifetime_points < 0:
                 raise ValueError('Lifetime points must be a non-negative whole number.')
-            if rank is None and rank_points is None and settings['lifetime_offset'] is not None:
-                rank, rank_points = divmod(lifetime_points-settings['lifetime_offset'], settings['points_per_rank'])
+            if not rank_entered:
+                rank, rank_points = divmod(max(0, lifetime_points-threshold), settings['points_per_rank'])
         values = dict(rank=state['rank'] if rank is None else rank,
                       rank_points=state['rank_points'] if rank_points is None else rank_points,
                       tickets=state['tickets'] if tickets is None else tickets,
@@ -237,21 +249,26 @@ class Ledger:
                 raise ValueError('Stats must be whole numbers; rank and tickets cannot be negative.')
         if values['rank_points'] >= settings['points_per_rank']:
             raise ValueError('Progress must be below points per rank.')
-        if lifetime_points is not None:
+        if lifetime_points is not None and rank_entered:
             settings['lifetime_offset'] = lifetime_points - values['rank'] * settings['points_per_rank'] - values['rank_points']
+            if settings['lifetime_offset']<0:
+                raise ValueError('Total points cannot be below the entered Egg Emperor progress.')
+        elif lifetime_points is None:
+            lifetime_points = (threshold + values['rank'] * settings['points_per_rank'] + values['rank_points']
+                               if rank_entered and state['lifetime_points'] is not None else state['lifetime_points'])
         with self.connect() as db:
-            if lifetime_points is not None:
+            if lifetime_points is not None and rank_entered:
                 db.execute('INSERT OR REPLACE INTO settings VALUES(1,?)', (json.dumps(settings),))
             cutoffs = [db.execute(f'SELECT COALESCE(MAX(id),0) FROM {table}').fetchone()[0]
                        for table in ('runs','purchases','spending')]
             reward_cutoff=db.execute('SELECT COALESCE(MAX(id),0) FROM ticket_rewards').fetchone()[0]
             return db.execute('''INSERT INTO corrections(timestamp,rank,rank_points,tickets,coins,
-                run_cutoff,purchase_cutoff,spending_cutoff,reason,approximate,estimated,reward_cutoff)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''',
+                run_cutoff,purchase_cutoff,spending_cutoff,reason,approximate,estimated,reward_cutoff,lifetime_points)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                 (datetime.now().isoformat(timespec='seconds'), values['rank'], values['rank_points'],
                  values['tickets'], values['coins'], *cutoffs, reason,
                  int(state['coins_approximate'] if approximate is None else approximate),
-                 int(state['coins_estimated'] if coins is None else False),reward_cutoff)).lastrowid
+                 int(state['coins_estimated'] if coins is None else False),reward_cutoff,lifetime_points)).lastrowid
 
     def corrections(self):
         with self.connect() as db:
@@ -353,12 +370,23 @@ class Ledger:
             checkpoint = db.execute('SELECT * FROM corrections ORDER BY id DESC LIMIT 1').fetchone()
         cp = dict(checkpoint) if checkpoint else dict(rank=s['rank'], rank_points=s['rank_points'],
             tickets=s['tickets'], coins=s['starting_coins'], run_cutoff=0, purchase_cutoff=0,
-            spending_cutoff=0, approximate=0, estimated=0,reward_cutoff=0)
+            spending_cutoff=0, approximate=0, estimated=0,reward_cutoff=0,lifetime_points=None)
         new_runs = [r for r in runs if r['applied'] and r['id'] > cp['run_cutoff']]
         new_purchases = [p for p in purchases if p['id'] > cp['purchase_cutoff']]
         new_spending = [e for e in spending if e['id'] > cp['spending_cutoff']]
-        total_points = cp['rank'] * s['points_per_rank'] + cp['rank_points'] + sum(r['points'] for r in new_runs)
-        rank, rank_points = divmod(total_points, s['points_per_rank'])
+        earned = sum(r['points'] for r in new_runs)
+        total_points = cp['rank'] * s['points_per_rank'] + cp['rank_points'] + earned
+        threshold = s['lifetime_offset'] if s['lifetime_offset'] is not None else EMPEROR_THRESHOLD
+        lifetime_points = cp['lifetime_points']
+        if lifetime_points is None and s['lifetime_offset'] is not None:
+            lifetime_points=cp['rank']*s['points_per_rank']+cp['rank_points']+s['lifetime_offset']
+        if lifetime_points is not None:
+            lifetime_points=max(0,lifetime_points)
+            # runs() is newest first. A loss at zero cannot consume points from
+            # a later successful award; each recorded result has its own floor.
+            for run in reversed(new_runs):lifetime_points=max(0,lifetime_points+run['points'])
+        emperor_points = max(0, lifetime_points-threshold) if lifetime_points is not None else total_points
+        rank, rank_points = divmod(emperor_points, s['points_per_rank'])
         tickets = cp['tickets'] + sum(p['count'] for p in new_purchases) - sum(r['consumes_ticket'] for r in new_runs) + sum(r['count'] for r in rewards if r['id']>cp['reward_cutoff'])
         unknown_loot=sum(r['money'] is None for r in runs)
         net = None if unknown_loot else sum(r['money'] - r['expenses'] for r in runs) - sum(e['amount'] for e in spending)
@@ -368,13 +396,16 @@ class Ledger:
         normal = sum(normal_samples) / len(normal_samples) if normal_samples else s['normal_points']
         # Failed outcomes affect rank/tickets, but do not train successful-run pace.
         return dict(rank=rank, rank_points=rank_points, tickets=tickets,
-                    remaining=max(0, s['target'] * s['points_per_rank'] - total_points),
+                    eggs=rank,is_emperor=lifetime_points>=threshold if lifetime_points is not None else None,
+                    emperor_threshold=threshold,total_points=lifetime_points,
+                    remaining=max(0, threshold+s['target']*s['points_per_rank']-lifetime_points)
+                              if lifetime_points is not None else max(0,s['target']*s['points_per_rank']-total_points),
                     run_net=net, loot_value=sum(r['money'] for r in runs if r['money'] is not None),loot_unknown_runs=unknown_loot,
                     coins=cp['coins'] - sum(r['expenses'] for r in new_runs)
                           - sum(e['amount'] for e in new_spending) - sum(p['cost'] for p in new_purchases),
                     coins_approximate=bool(cp['approximate']),
                     coins_estimated=bool(cp['estimated'] or new_spending or new_purchases or any(r['expenses'] for r in new_runs)),
-                    lifetime_points=None if s['lifetime_offset'] is None else total_points + s['lifetime_offset'],
+                    lifetime_points=lifetime_points,
                     bought_today=bought_today, today_runs=len(today_runs),
                     today_points=sum(r['points'] for r in today_runs),
                     today_net=-sum(r['expenses'] for r in today_runs)

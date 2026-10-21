@@ -53,7 +53,8 @@ def single_points(text):
 
 def rank_points_reading(text):
     """A signed change on a ranking result, separate from lifetime totals."""
-    if not re.search(r'\b(?:imperador\s+dos\s+ovos|egg\s+emperor)\b',text,re.I) or lifetime_reading(text) is None:
+    ranking_label = r'\b(?:imperador\s+dos\s+ovos|egg\s+emperor|pontos\s+de\s+ranque|rank(?:ing)?\s+points)\b'
+    if not re.search(ranking_label,text,re.I) or lifetime_reading(text) is None:
         return None
     changes=re.findall(r'(?<![\w.,+−-])[+−-]\s*\d+(?:[.,]\d{3})*(?![\w.,])',text)
     if len(changes)!=1:return None

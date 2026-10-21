@@ -3,6 +3,18 @@ from screen_kind import screen_kind
 
 
 class ScreenKindTests(unittest.TestCase):
+    def test_pre_emperor_results_need_ranking_context_and_one_signed_award(self):
+        for label in ('Pontos de ranque', 'Rank points', 'Ranking points'):
+            with self.subTest(label=label):
+                self.assertEqual(screen_kind(f'Explorer\n{label}\n12000/12500\n+170'), 'points')
+        for text in ('Explorer\n12000/12500\n+170',
+                     'Rank points\n+170',
+                     'Rank points\n12000/12500\n+170\n-140',
+                     'Inventário Cofre\nRank points\n12000/12500\n+170',
+                     'Match loot\nRank points\n12000/12500\n+170'):
+            with self.subTest(text=text):
+                self.assertIsNone(screen_kind(text))
+
     def test_recognizes_negative_point_result_labels(self):
         self.assertEqual(screen_kind('Imperador dos Ovos\n47583/47670\n-140'), 'points')
         self.assertEqual(screen_kind('Egg Emperor\n47583/47670\n−140'), 'points')

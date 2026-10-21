@@ -1,7 +1,7 @@
 # Aniimo Eggheist Tracker
 
 A Windows desktop companion for tracking Eggheist runs, planning an Egg Emperor
-rank goal, and displaying a local Lost Sanctum route overlay. English and
+egg goal, and displaying a local Lost Sanctum route overlay. English and
 Português (Brasil) are available in Settings.
 
 ## Features
@@ -32,7 +32,7 @@ Português (Brasil) are available in Settings.
 
 Download **[AniimoTracker.exe from the latest release](https://github.com/CoreosG/aniimo-tracker/releases/latest)** and open it. No Python or administrator access is required. In **Map & routes**, click **Download map pack** once. The map files download directly from AniimoTools and MOANIIMO and stay on your PC.
 
-The first-run tutorial explains capture, points, saving, overlays and parties. Reopen it anytime with **?** at the top. Its example screenshots are anonymized; original player captures are not distributed. All shortcuts shown in the guide follow your current settings.
+The first-run tutorial includes **Download map pack** and **Set current stats** buttons, with live setup status. You can install maps in the background and set stats without starting a run. It explains capture, points, saving, overlays and parties; the points example labels the cumulative total, run award and Emperor eggs separately. Reopen it anytime with **?** at the top. Its example screenshots are anonymized; original player captures are not distributed. All shortcuts shown in the guide follow your current settings.
 
 **Settings → Storage & updates** checks GitHub at launch, at most once a day and offers a manual check. New versions download when you click the button; nothing is installed or executed automatically. Replace the old executable after closing it. Your history and settings remain in `%LOCALAPPDATA%/AniimoTracker`.
 
@@ -73,6 +73,10 @@ Overlay contains live opacity, size and zoom previews, a position reset, and
 **Stop map-only session** is beside the tracking controls at the top. The overlay
 shows a compact status even before map setup; it tells you when a map pack is needed.
 
+**Map & routes → Overlay → Keep status bar between runs** keeps a compact in-game
+status header visible even while idle or paused. It is **off by default**. The master
+**Show overlay** switch still hides it; enabling the header does not start a run.
+
 ## Budget and analytics
 
 The overview's **Break-even estimate** shows the coins you need to sell per run,
@@ -94,9 +98,10 @@ known-loot calculations, but do not lower the successful-run points average.
 
 ## First use
 
-1. Set your current rank, rank progress, tickets and coin balance with **Correct
-   stats**. Configure the target, deadline, ticket budget and costs in Settings.
-   The initial rank/tickets are example values; replace them with your own.
+1. Use **Correct stats** or the tutorial's **Set current stats** button to enter
+   **total Egg Heist points**, tickets and coin balance. Configure the egg target,
+   deadline, ticket budget and costs in Settings. Initial ticket values are
+   examples; replace them with your own. An unknown total stays blank until set.
 2. Choose the game monitor. Start a run, with or without a balance, or start
    map-only tracking from **Map & routes**.
 3. Open the full game map with `M` during a run to identify the layout. Recognition
@@ -117,6 +122,43 @@ the wallet. A starting balance is a wallet checkpoint after sales and shopping.
 Failed runs affect rank and tickets but are excluded from the successful-run
 points average.
 
+### Total points and Emperor eggs
+
+Use the cumulative number **before the slash** on the points-result screen, not
+the **+points** awarded for that run. For example, **52,530 / 52,710** with
+**+370** means a current total of **52,530** and an award of **370**.
+
+The app tracks total points before and after Egg Emperor. Its default Emperor
+threshold is **14,550 total points**, followed by **180 points per egg**. It derives
+the egg count and progress automatically: **52,530 total → 211 eggs, 0/180**.
+Before the threshold, it shows points remaining to Egg Emperor. A target of
+**1,000 eggs** therefore requires **194,550 total points** with these defaults.
+
+If you are already Emperor and the game's egg count differs, open
+**Correct stats → Advanced · calibrate eggs**, enable **Calibrate using the eggs
+shown in game**, and enter the total, egg count and within-egg progress from the
+same screen. Calibration is optional and changes the threshold used to derive
+eggs. It preserves your observed total and saved runs. Existing calibrated data
+keeps its threshold during updates.
+
+Known zero points and an unknown total are different. Enter **0** for a real zero;
+older histories with no confirmed total keep their records and ask you to set it.
+Losses reduce progression; the known total floors at zero after each result.
+Actual signed awards remain unchanged in run history and analytics.
+
+### Switching from map-only tracking
+
+While map-only tracking is running, the same capture shortcut still recognizes
+Inventory, loot and points. **Inventory** exits map-only mode and starts a run
+with the observed balance. **Loot or points results** exit map-only mode and open
+result entry; a starting balance is optional. Captures queued in that same burst
+stay together through an automatic start.
+
+You can also type points and choose **Save run** directly from map-only mode.
+After saving, enter or capture the next result and save again: no start button or
+balance is required for points-only logging. Saving consumes a ticket when
+**Uses 1 Chaos ticket** is enabled. Starting a run alone does not consume one.
+
 ## Party navigation
 
 Open **Party**, save a username, and create a party or enter a teammate's
@@ -133,6 +175,19 @@ own minimap locally. Circles show names and distinct colors; a dim center and
 The host controls **Party difficulty**. Any member can choose **New shared run**. Starting the next tracked run also announces a new shared session after completing the current session. Finishing an older ledger run and catching up does not reset the newer map again.
 
 A new shared run clears navigation. Its first confirmed map can display an unfinished-run warning, even if the same layout repeats. Turn **Party → Warn about unfinished runs** off to hide it. Map-only tracking never displays this ledger warning. Map sharing continues without saving, discarding, or changing the unfinished run.
+
+The relay accepts only typed navigation updates and rebuilds outgoing state from
+known fields. Messages are limited to **2 KB**, JSON nesting to **16 levels**,
+positions to finite **0–100** coordinates, and layout evidence to the selected
+difficulty's presets. Updates have a **3/second** allowance with an initial
+**8-message burst**. Malformed updates are rejected before changing shared state;
+oversized or flooding connections are closed. Peers cannot supply another
+member's identity to move their marker or send arbitrary files, commands or URLs
+for the app to open.
+
+These checks do not verify the truth of valid-looking map evidence or positions.
+A party member can deliberately report incorrect navigation or start a new shared
+run, so invite codes should be shared with people you intend to play with.
 
 The relay is self-hostable with Docker or Python and needs only `websockets`.
 See [server/README.md](../server/README.md) for ports, TLS, limits and deployment;

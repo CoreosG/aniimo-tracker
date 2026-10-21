@@ -258,7 +258,7 @@ class App(tk.Tk):
         cards.pack(fill='x')
         self.card_values = {}
         self.stat_cards = []
-        for i, (key, title) in enumerate((('rank', 'CURRENT RANK'), ('tickets', 'TICKETS ON HAND'),
+        for i, (key, title) in enumerate((('rank', 'TOTAL POINTS'), ('tickets', 'TICKETS ON HAND'),
                                          ('today', 'TODAY’S POINTS'), ('net', 'COIN BALANCE'))):
             cards.columnconfigure(i, weight=1, uniform='cards')
             card = ttk.Frame(cards, style='Panel.TFrame', padding=14)
@@ -277,6 +277,10 @@ class App(tk.Tk):
                 self.free_tickets_button = ttk.Button(actions, text='Free tickets', style='Card.TButton', command=self.ticket_reward_dialog)
                 self.free_tickets_button.pack(side='left')
             elif key == 'rank':
+                self.progress_caption=tk.StringVar()
+                caption=ttk.Label(card,textvariable=self.progress_caption,style='Panel.TLabel',foreground=MUTED,font=('Segoe UI',9),wraplength=220)
+                caption.pack(anchor='w',pady=(4,0))
+                card.bind('<Configure>',lambda event:caption.configure(wraplength=max(100,event.width-28)))
                 ttk.Button(card, text='Correct stats', style='Card.TButton', command=self.correct_stats_dialog).pack(anchor='w', pady=(8, 0))
             elif key == 'net':
                 self.balance_source_text=tk.StringVar()
@@ -471,8 +475,8 @@ class App(tk.Tk):
         ttk.Label(storage,text='Default 30. Older screenshots are deleted automatically; run history and the current draft stay saved.',style='Muted.TLabel',wraplength=850).pack(anchor='w')
         grid = ttk.Frame(planning)
         grid.pack(fill='x')
-        specs = [('target', 'Target rank'), ('deadline', 'Deadline (YYYY-MM-DD, inclusive)'),
-                 ('points_per_rank', 'Points per rank'), ('daily_tickets', 'Tickets to buy per day'),
+        specs = [('target', 'Target Emperor eggs'), ('deadline', 'Deadline (YYYY-MM-DD, inclusive)'),
+                 ('points_per_rank', 'Points per Emperor egg'), ('daily_tickets', 'Tickets to buy per day'),
                  ('normal_points', 'Expected normal points (before logged data)'),
                  ('first_points', 'Expected first-run award (before logged data)'),
                  ('run_minutes', 'Minutes in each run (1–15; default 12)'),
@@ -509,7 +513,7 @@ class App(tk.Tk):
                   style='Muted.TLabel').pack(anchor='w', pady=(16, 4))
         self.price_var = tk.StringVar(value=', '.join(str(n) for n in (settings['prices'] or PRICES)))
         ttk.Entry(planning, textvariable=self.price_var).pack(fill='x')
-        ttk.Label(planning, text='Use Correct current stats to set your rank, progress, tickets or actual balance directly.\n'
+        ttk.Label(planning, text='Use Correct current stats to set total points, tickets or your actual balance.\n'
                   'Averages use successful runs, including daily bonuses; failed runs are excluded.\n'
                   'Ticket purchases are logged manually; the daily target is used only for planning.',
                   style='Muted.TLabel', wraplength=1000).pack(anchor='w', pady=16)
@@ -589,11 +593,11 @@ class App(tk.Tk):
 1. Keep the tracker open or minimized while you play Aniimo on DISPLAY1.
 2. Start run accepts a manually entered Balance (optional); leave it blank if unknown. Or capture Inventory with Ctrl+Shift+F8 to start with an observed balance. An unrecognized automatic capture starts without a balance if no run or unsaved result exists. The overlay header says Waiting for map until a full map confirms the layout. No ticket is consumed yet. For just the map, use Map > Start map tracker without creating a run.
 3. Enter Chaos and open M once with both portals visible. After the full map is recognized, close M; the overlay follows the minimap. Lobby minimap matches cannot select a layout. The same Capture screen action can read an open M map or resume an already confirmed map from gameplay.
-4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish, then hides the overlay. Toggle this information in Map > Overlay. All shortcuts can be changed in Settings.
+4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish. Saving ends navigation. Enable Keep status bar between runs in Map > Overlay to retain a compact in-game header between runs. All shortcuts can be changed in Settings.
 5. Check the points and click Save run. This also works with no recorded start or screenshots. Points and one ticket are counted once; loot value never adds cash.
 
-Map & routes uses one Pause map / Resume map toggle in both tracked-run and map-only modes. The same configurable Toggle map tracking shortcut does both. Without a run, Start map tracker begins map-only mode: inventory/results are ignored and no run is logged. Map & routes > Stop map-only session exits that mode, or Start run explicitly switches into run logging. Pause preserves the detected layout. Every game-map key press requests a fresh full-map check before minimap following. Unknown screenshots do not change stats.
-The Tickets on hand card has Buy tickets (log an actual purchase) and Free tickets (chest/reward receipts). Free tickets do not charge coins or use daily paid shop slots. Both update stock and forecasts immediately; free-ticket receipts remain in that dialog's history. Correct stats is directly under Current rank.
+Map & routes uses one Pause map / Resume map toggle in both tracked-run and map-only modes. The same configurable Toggle map tracking shortcut does both. Without a run, Start map tracker begins map-only mode. An Inventory capture switches into run logging automatically; capturing points or entering points and saving also records a result. Gameplay and map captures alone do not record runs. Pause preserves the detected layout. Every game-map key press requests a fresh full-map check before minimap following. Unknown screenshots do not change stats.
+The Tickets on hand card has Buy tickets (log an actual purchase) and Free tickets (chest/reward receipts). Free tickets do not charge coins or use daily paid shop slots. Both update stock and forecasts immediately; free-ticket receipts remain in that dialog's history. Correct stats is directly under Total points.
 More options contains optional spending, manual inputs, image imports, reading areas and cancel-start controls. Map & routes puts difficulty, route goals and icon switches beside the preview. Choose Route, Icons, Overlay or Tools in the map sidebar. Overlay contains display controls and Tools contains calibration and the optional simulator.
 For history already reflected in your stats, check Already included in current stats under More options. The supplied 431,719-loot / 192-point example is included this way. Cancel mistaken run start and Clear result draft are also under More options.
 
@@ -606,9 +610,9 @@ You can also import screenshots. Manual values work even when OCR fails. Screens
 
 PLANNING AND COINS
 
-Correct current stats sets the current rank, within-rank progress, tickets or balance directly. It preserves history; older events are already included in the corrected values. New runs and purchases then apply from that point onward. You do not need to calculate a new starting baseline. The deadline includes the entire selected game day. Daily reset uses your PC’s timezone; set it to match your server reset.
+Correct current stats sets total points, tickets or balance directly. Optional advanced calibration accepts the Emperor egg count and within-egg progress. It preserves history; older events are already included in the corrected values. New runs and purchases then apply from that point onward. You do not need to calculate a new starting baseline. The deadline includes the entire selected game day. Daily reset uses your PC’s timezone; set it to match your server reset.
 
-Lifetime points are cumulative across earlier tiers. They cannot be divided directly by 180 to find your Emperor rank. Your example calibrates 47,723 total points to rank 184 with 53/180 progress: the next threshold is 47,850. Result OCR reads the lifetime total separately from +192 awarded points. Future result totals reconcile rank progress if needed. Your remaining points to rank 1,000 are calculated from current Emperor rank and progress.
+Lifetime points are cumulative across earlier tiers. They cannot be divided directly by 180 to find your Emperor rank. The default Egg Emperor threshold is 14,550 total points, inferred from 47,723 total minus 184 eggs × 180 minus 53 progress. Before that threshold, the overview shows total points; after it, the Emperor egg count is also shown. Correct current stats accepts total points directly. Advanced > calibrate eggs can recalibrate using total, eggs and within-egg progress from the same screen. Result OCR reads the total separately from the signed run award; saving can reconcile the first known total too.
 
 Run loot value is not cash income. You can keep items, sell them later, or receive a different sale price. Your latest observed inventory balance is authoritative. Subsequent recorded purchases/spending reduce the estimate; run loot never increases it. The difference between successive start balances includes all intervening sales and spending and is not individual run profit.
 
@@ -647,22 +651,29 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             if hasattr(self,'party'):self.party.sync_context()
         state, plan = self.ledger.summary(), forecast(self.ledger)
         s = self.ledger.settings()
-        for key, value in dict(rank=f"{state['rank']:,}", tickets=str(state['tickets']),
+        known=state['total_points'] is not None
+        for key, value in dict(rank=f"{state['total_points']:,}" if known else '—', tickets=str(state['tickets']),
                                 today=f"{state['today_points']:,}", net=('≈ ' if state['coins_approximate'] else '') + f"{state['coins']:,}").items():
             self.card_values[key].set(value)
+        self.progress_caption.set((f"Egg Emperor · {state['eggs']:,} eggs · {state['rank_points']}/{s['points_per_rank']}" if state['is_emperor'] else
+            f"{state['emperor_threshold']-state['total_points']:,} points to Egg Emperor") if known else 'Set your current total points')
         self.balance_source_text.set('Estimated since last check' if state['coins_estimated'] else 'Latest observed balance')
-        if not state['remaining']:
+        if not known:
+            line='Set your total points to calculate this goal.'
+        elif not state['remaining']:
             line = 'Goal reached!'
         elif plan['reachable']:
-            line = f"On track · rank {s['target']:,} by {plan['finish']:%b %d} · {plan['needed_tickets']:,} runs left"
+            line = f"On track · {s['target']:,} eggs by {plan['finish']:%b %d} · {plan['needed_tickets']:,} runs left"
         else:
             line = f"Below target at this pace · {state['remaining']:,} points left · adjust goal settings"
         self.forecast_text.set(line)
-        goal_points=max(1,s['target']*s['points_per_rank'])
-        progress=max(0,min(100,100*(1-state['remaining']/goal_points)))
+        goal_points=max(1,state['emperor_threshold']+s['target']*s['points_per_rank'])
+        progress=max(0,min(100,100*state['total_points']/goal_points)) if known else 0
         self.goal_progress.configure(value=progress)
-        self.goal_progress_text.set(f"Rank {state['rank']:,} / {s['target']:,} · {progress:.1f}%")
-        if not state['remaining']:
+        self.goal_progress_text.set((f"Total points {state['total_points']:,} / {goal_points:,} · {progress:.1f}%") if known else f"Target: {goal_points:,} total points · {s['target']:,} eggs")
+        if not known:
+            time_line='Estimated playtime: — · set your total points first'
+        elif not state['remaining']:
             time_line = 'Goal reached · 0 min of playtime remaining'
         elif plan['play_minutes'] is None:
             time_line = 'Playtime estimate unavailable · successful-run points per run must be positive'
@@ -677,8 +688,9 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         budget=break_even(s)
         self.budget_panel.update_budget(s,budget)
         self.budget_text.set(self.budget_panel.details.get())
+        margin=f"{plan['margin']:+,}" if plan['margin'] is not None else '—'
         self.goal_details_text.set(
-            f"Deadline: {s['deadline']} · {plan['days']} days left · {plan['margin']:+,} ticket margin\n"
+            f"Deadline: {s['deadline']} · {plan['days']} days left · {margin} ticket margin\n"
             f"{state['normal']:.1f} pts/success · {s['run_minutes']} min/run + {s['extra_minutes']} extra min/run\n"
             'Assumes daily ticket purchases. Daily time includes days off.')
         self.tree.delete(*self.tree.get_children())
@@ -697,7 +709,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 'inventory balance '+('≈ ' if active['approximate'] else '')+f"{active['balance']:,} · loot results will not add cash")
             self.run_info.set(f"Run started {active['timestamp']} · "+balance_info)
         else:
-            self.run_info.set('Map-only mode · Start run to log a tracked run, or use Map & routes > Stop map-only session for direct result entry.' if self.sanctum.session.standalone else
+            self.run_info.set('Map tracker active · capture Inventory to start a run, or capture/enter points and Save run.' if self.sanctum.session.standalone else
                 'No run active. Start run accepts a manual balance or a blank balance. You can also enter points directly below.')
         self.update_run_status()
 
@@ -711,7 +723,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             except ValueError:
                 pass
         reading=self.busy_capture or self.auto_busy or bool(self.auto_pending)
-        self.save_run_button.configure(state='disabled' if self.sanctum.session.standalone else 'normal')
+        self.save_run_button.configure(state='normal' if not self.sanctum.session.standalone or 'points' in valid else 'disabled')
         if active:
             map_state=('Map watching' if self.sanctum.session.map_confirmed else 'Map waiting for '+self.shortcut_hint('map')) if self.sanctum.session.watching else 'Map paused'
             heading='Run ongoing'
@@ -734,7 +746,9 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 f'Capture Inventory with {self.shortcut_hint("capture")} to start, or type results below to log a manual run.')
             if reading:guidance='Reading screenshot…'
             elif self.sanctum.session.standalone:
-                guidance=('Map-only tracking · the same Map button pauses/resumes. No run stats are recorded.' if self.sanctum.session.map_confirmed else
+                guidance=('Points ready · Save run to record this result. Loot is optional.' if 'points' in valid else
+                    'Capture or enter points, then Save run.' if valid else
+                    'Map-only tracking · capture Inventory to start a run, or capture points to log a result.' if self.sanctum.session.map_confirmed else
                     f'Map only · no stats are recorded. Open the game map ({self.shortcut_hint("map")}) to confirm the layout.')
         self.run_guidance.set(guidance)
 
@@ -778,6 +792,10 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 messagebox.showerror(tr('Import failed'), tr(str(exc)))
 
     def attach(self, kind, path, full_text=None):
+        if self.sanctum.session.standalone:
+            previous=self.capture_context()
+            self.sanctum.stop_map_only()
+            self.transfer_pending_captures(previous)
         self.screenshot_cleanup_due=True
         self.draft_images[kind] = str(path)
         self.fields[kind].set('')
@@ -789,12 +807,17 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         active=self.ledger.active_start()
         return (active['id'] if active else None,len(self.ledger.runs()),self.sanctum.context_serial)
 
+    def transfer_pending_captures(self,previous):
+        """Keep one capture burst together during an automatic run start."""
+        current=self.capture_context()
+        self.auto_pending=[(path,current if context==previous else context) for path,context in self.auto_pending]
+
     def auto_attach(self,path,context=None):
         """The one capture action; classify first, then use the normal review path."""
         self.screenshot_cleanup_due=True
         context=self.capture_context() if context is None else context
         difficulty=self.sanctum.difficulty.get()
-        if self.auto_busy:
+        if self.auto_busy or self.pending_ocr:
             self.auto_pending.append((path,context))
             self.status.set('Screenshot queued. Reading the previous capture…')
             return
@@ -893,9 +916,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             if context!=self.capture_context():
                 self.status.set('The run changed while reading this screenshot. Capture it again if needed.')
                 continue
-            if self.sanctum.session.standalone and kind in ('balance','money','points'):
-                self.status.set('Map-only mode: inventory/results are ignored. Start a run, or stop the map-only session in Map & routes, to log results.')
-                continue
             if kind in ('money','points','balance'):
                 if kind=='balance' and self.ledger.active_start():
                     self.status.set('Your run is already active. Capture loot and points when it finishes.')
@@ -959,7 +979,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             if kind == 'points' and totals and not self.fields['lifetime'].get():
                 self.fields['lifetime'].set(str(totals[0]))
             self.persist_draft()
-        if not self.auto_busy and self.auto_pending:
+        if not self.auto_busy and not self.pending_ocr and self.auto_pending:
             path,context=self.auto_pending.pop(0)
             self.auto_attach(path,context)
         if time.monotonic()>=self.next_locale_refresh:
@@ -1120,7 +1140,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         return parse_amount(text)
 
     def result_ready(self):
-        if self.sanctum.session.standalone:return False,'Map-only session · no run to save'
         if self.auto_busy or self.auto_pending or self.busy_capture or self.pending_ocr:
             return False,'Reading capture · wait before saving'
         try:
@@ -1163,9 +1182,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         return self.save_run(quiet=True)
 
     def save_run(self,quiet=False):
-        if self.sanctum.session.standalone:
-            self.status.set('Map-only mode does not log results. Use Map & routes > Stop map-only session, then save your points.')
-            return
         if self.auto_busy or self.auto_pending or self.busy_capture or self.pending_ocr:
             self.status.set('Still reading your screenshot. Save when the readings are ready.')
             return
@@ -1173,9 +1189,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             active = self.ledger.active_start()
             included = self.already_included.get()
             lifetime = self.integer(self.fields['lifetime'].get()) if self.fields['lifetime'].get().strip() else None
-            offset = self.ledger.settings()['lifetime_offset']
-            if lifetime is not None and offset is not None and lifetime < offset:
-                raise ValueError('Lifetime total is below the calibrated Egg Emperor thresholds.')
             points = parse_points(self.fields['points'].get())
             failed = self.failed_run.get() or points < 0
             if failed:
@@ -1186,8 +1199,9 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 consumes_ticket=self.consumes.get(), money_image=self.draft_images.get('money',''),
                 points_image=self.draft_images.get('points',''), applied=not included,
                 start_id=active['id'] if active and not included else None)
-            if not included and lifetime is not None and offset is not None and self.ledger.summary()['lifetime_points'] != lifetime:
+            if not included and lifetime is not None and self.ledger.summary()['lifetime_points'] != lifetime:
                 self.ledger.correct_stats(lifetime_points=lifetime, reason='Lifetime total on run results')
+            if self.sanctum.session.standalone:self.sanctum.stop_map_only()
             self.clear_draft(confirm=False)
             self.refresh()
             self.cleanup_screenshots()
@@ -1212,6 +1226,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         if not self.can_start_capture():
             return
         try:
+            previous=self.capture_context()
             if without_balance is None:without_balance=not self.fields['balance'].get().strip()
             balance = None if without_balance else self.integer(self.fields['balance'].get())
             approximate = False if without_balance else self.balance_approximate or bool(re.search(r'[KkMmBb]', self.fields['balance'].get()))
@@ -1223,6 +1238,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             self.run_day.set(str(self.ledger.game_day()))
             self.persist_draft()
             self.refresh()
+            if not manual:self.transfer_pending_captures(previous)
             self.status.set(('Run started without balance · wallet unchanged · open the game map inside Chaos to track' if without_balance else
                 f'Run started · inventory balance {balance:,} · capture loot and points at the end'))
         except Exception as exc:
@@ -1246,11 +1262,9 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         values = {}
         self.stats_editor=window
         window.fields=values
-        initial = dict(rank=str(state['rank']), rank_points=str(state['rank_points']), tickets=str(state['tickets']),
+        initial = dict(rank=str(state['eggs']) if state['is_emperor'] else '0', rank_points=str(state['rank_points']) if state['is_emperor'] else '0', tickets=str(state['tickets']),
                        coins=f"{state['coins']:,}", lifetime_points='' if state['lifetime_points'] is None else str(state['lifetime_points']))
-        for key, title in [('rank','Current Egg Emperor rank'), ('rank_points','Points within this rank (0–179)'),
-                           ('tickets','Current tickets'), ('coins','Actual current coin balance'),
-                           ('lifetime_points','Lifetime total points (optional)')]:
+        for key, title in [('lifetime_points','Total Egg Heist points'),('tickets','Current tickets'),('coins','Actual current coin balance')]:
             ttk.Label(frame, text=title, style='Muted.TLabel').pack(anchor='w', pady=(5,2))
             values[key] = tk.StringVar(value=initial[key])
             ttk.Entry(frame, textvariable=values[key], width=42).pack(fill='x')
@@ -1259,20 +1273,46 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 window.balance_preview=tk.StringVar(value=balance_preview(values[key].get()))
                 ttk.Label(frame,textvariable=window.balance_preview,foreground=ACCENT).pack(anchor='w',pady=(4,2))
                 values[key].trace_add('write',lambda *_:window.balance_preview.set(balance_preview(values['coins'].get())))
-        ttk.Label(frame, text='47,723 / 47,850 means 53/180 into rank 184.\nK/M currency is rounded; enter full digits when you know the exact balance.',
-                  style='Muted.TLabel').pack(anchor='w', pady=12)
+        window.progress_preview=tk.StringVar()
+        ttk.Label(frame,textvariable=window.progress_preview,foreground=ACCENT,wraplength=510).pack(anchor='w',pady=(10,6))
+        ttk.Label(frame,text='Use the cumulative total on the points screen, not the +points earned in one run.',style='Muted.TLabel',wraplength=510).pack(anchor='w',pady=(0,8))
+        advanced=self.disclosure(frame,'Advanced · calibrate eggs')
+        window.calibrate=tk.BooleanVar(value=False)
+        ttk.Checkbutton(advanced,text='Calibrate using the eggs shown in game',variable=window.calibrate).pack(anchor='w',pady=(0,8))
+        calibration_entries=[]
+        for key,title in [('rank','Egg Emperor eggs'),('rank_points','Points into the next egg (0–179)')]:
+            ttk.Label(advanced,text=title,style='Muted.TLabel').pack(anchor='w',pady=(4,2))
+            values[key]=tk.StringVar(value=initial[key])
+            entry=ttk.Entry(advanced,textvariable=values[key],width=42,state='disabled');entry.pack(fill='x')
+            calibration_entries.append(entry)
+        ttk.Label(advanced,text='Optional: enter the total, egg count and progress from the same screen. This calibrates the Egg Emperor threshold.',style='Muted.TLabel',wraplength=510).pack(anchor='w',pady=8)
+        def preview(*_):
+            for entry in calibration_entries:entry.configure(state='normal' if window.calibrate.get() else 'disabled')
+            try:
+                total=self.integer(values['lifetime_points'].get())
+                if total<0:raise ValueError()
+                if window.calibrate.get():
+                    threshold=total-self.integer(values['rank'].get())*self.ledger.settings()['points_per_rank']-self.integer(values['rank_points'].get())
+                    text=f'Calibrated threshold: {threshold:,} total points'
+                elif total<state['emperor_threshold']:text=f"{state['emperor_threshold']-total:,} points to Egg Emperor"
+                else:
+                    eggs,progress=divmod(total-state['emperor_threshold'],self.ledger.settings()['points_per_rank'])
+                    text=f"Egg Emperor · {eggs:,} eggs · {progress}/{self.ledger.settings()['points_per_rank']}"
+                window.progress_preview.set(text)
+            except ValueError:window.progress_preview.set('Enter your cumulative total points to see progression.')
+        for key in ('lifetime_points','rank','rank_points'):values[key].trace_add('write',preview)
+        window.calibrate.trace_add('write',preview);preview()
         def save():
             try:
-                changes = {key:self.integer(value.get()) for key,value in values.items()
-                           if key != 'lifetime_points' and value.get().strip() != initial[key]}
+                changes = {key:self.integer(values[key].get()) for key in ('tickets','coins')
+                           if values[key].get().strip() != initial[key]}
                 if values['lifetime_points'].get().strip() != initial['lifetime_points'] and values['lifetime_points'].get().strip():
                     changes['lifetime_points'] = self.integer(values['lifetime_points'].get())
+                if window.calibrate.get():
+                    changes.update(lifetime_points=self.integer(values['lifetime_points'].get()),rank=self.integer(values['rank'].get()),rank_points=self.integer(values['rank_points'].get()))
                 if not changes:
                     window.destroy()
                     return
-                if 'lifetime_points' in changes and self.ledger.settings()['lifetime_offset'] is None:
-                    changes.setdefault('rank', self.integer(values['rank'].get()))
-                    changes.setdefault('rank_points', self.integer(values['rank_points'].get()))
                 self.ledger.correct_stats(**changes, approximate=bool(re.search(r'[KkMmBb]',values['coins'].get()))
                     if 'coins' in changes else state['coins_approximate'])
                 self.refresh()
@@ -1280,7 +1320,8 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 self.status.set('Current stats corrected · prior history preserved')
             except Exception as exc:
                 messagebox.showerror(tr('Check current stats'), tr(str(exc)), parent=window)
-        ttk.Button(frame, text='Apply current stats', command=save, style='Accent.TButton').pack(anchor='w')
+        window.save_button=ttk.Button(frame, text='Apply current stats', command=save, style='Accent.TButton');window.save_button.pack(anchor='w',pady=(10,0))
+        self.localizer.refresh(window)
 
     def show_balance_history(self):
         from balance_history import BalanceHistory

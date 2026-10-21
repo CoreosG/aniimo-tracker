@@ -8,6 +8,7 @@ import ipaddress
 import logging
 import math
 import os
+import re
 import secrets
 import time
 from websockets.asyncio.server import serve
@@ -23,6 +24,34 @@ CF_NETWORKS=tuple(ipaddress.ip_network(cidr) for cidr in (
     '104.24.0.0/14','172.64.0.0/13','131.0.72.0/22','2400:cb00::/32',
     '2606:4700::/32','2803:f800::/32','2405:b500::/32','2405:8100::/32',
     '2a06:98c0::/29','2c0f:f248::/32'))
+
+
+def counter(value,minimum=0):
+    if type(value) is not int or not minimum<=value<=2**53-1:
+        raise ValueError('invalid_message')
+    return value
+
+
+def bounded_number(value,minimum,maximum):
+    # Bounds before conversion also reject thousand-digit integers without an
+    # OverflowError in math.isfinite(). bool is not a coordinate or score.
+    if type(value) not in (int,float) or not minimum<=value<=maximum or not math.isfinite(value):
+        raise ValueError('invalid_message')
+    return value
+
+
+def decode_message(raw):
+    def invalid_constant(_):raise ValueError('invalid_message')
+    message=json.loads(raw,parse_constant=invalid_constant)
+    if not isinstance(message,dict) or not isinstance(message.get('type'),str):
+        raise ValueError('invalid_message')
+    pending=[(message,1)]
+    while pending:
+        value,depth=pending.pop()
+        if depth>16:raise ValueError('invalid_message')
+        if isinstance(value,dict):pending.extend((item,depth+1) for item in value.values())
+        elif isinstance(value,list):pending.extend((item,depth+1) for item in value)
+    return message
 
 
 class Relay:
@@ -57,13 +86,14 @@ class Relay:
         self.connections[address] += 1
         room = member = writer = None
         try:
-            message = json.loads(await asyncio.wait_for(socket.recv(), 10))
-            if not isinstance(message, dict): raise ValueError('invalid_message')
+            message = decode_message(await asyncio.wait_for(socket.recv(), 10))
+            if 'version' in message and (type(message['version']) is not int or message['version']!=VERSION):
+                raise ValueError('invalid_message')
             kind = message.get('type')
             if kind == 'create':
                 name = username(message.get('username'))
                 difficulty = message.get('difficulty', 'Chaos')
-                if difficulty not in DIFFICULTIES: raise ValueError('invalid_difficulty')
+                if not isinstance(difficulty,str) or difficulty not in DIFFICULTIES: raise ValueError('invalid_difficulty')
                 if len(self.rooms) >= self.max_rooms: raise ValueError('server_full')
                 alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
                 code = ''.join(secrets.choice(alphabet) for _ in range(8))
@@ -72,11 +102,16 @@ class Relay:
                             layout=None, confidence=0., source=None, host=None, dirty=False, positions_dirty=False)
                 self.rooms[code] = room
             elif kind in ('join', 'resume'):
-                room = self.rooms.get(str(message.get('code', '')).strip().upper())
+                code=message.get('code')
+                if not isinstance(code,str):raise ValueError('invalid_message')
+                room = self.rooms.get(code.strip().upper())
                 if room is None: raise ValueError('party_not_found')
                 if kind == 'resume':
-                    member = room['members'].get(message.get('id'))
-                    if member is None or not secrets.compare_digest(member['token'], str(message.get('token', ''))):
+                    identity,token=message.get('id'),message.get('token')
+                    if (not isinstance(identity,str) or not re.fullmatch(r'[0-9a-f]{16}',identity) or
+                            not isinstance(token,str) or len(token)>128):raise ValueError('invalid_message')
+                    member = room['members'].get(identity)
+                    if member is None or not secrets.compare_digest(member['token'], token):
                         member = None; raise ValueError('session_expired')
                     if member['socket'] is not None: raise ValueError('already_connected')
                     name = member['username']
@@ -98,8 +133,7 @@ class Relay:
             writer = asyncio.create_task(self.write(socket, member['queue']))
             room['dirty'] = True
             async for raw in socket:
-                message = json.loads(raw)
-                if not isinstance(message, dict): raise ValueError('invalid_message')
+                message = decode_message(raw)
                 now = time.monotonic()
                 member['credit'] = min(8., member['credit']+(now-member['rate_time'])*3.)-1
                 member['rate_time'] = now
@@ -107,7 +141,7 @@ class Relay:
                     await socket.close(1008, 'Too many updates'); break
                 if message.get('type') == 'leave': break
                 await self.command(room, member, message)
-        except (ValueError, TypeError, KeyError) as exc:
+        except (ValueError, TypeError, KeyError, RecursionError, OverflowError) as exc:
             # Return stable codes only; never echo arbitrary client input.
             codes = {'party_full', 'party_not_found', 'server_full', 'session_expired',
                      'invalid_difficulty', 'already_connected', 'invalid_message'}
@@ -140,37 +174,48 @@ class Relay:
     async def command(self, room, member, message):
         if message.get('type') == 'new_run':
             difficulty = message.get('difficulty', room['difficulty'])
-            if difficulty not in DIFFICULTIES: raise ValueError('invalid_difficulty')
+            if not isinstance(difficulty,str) or difficulty not in DIFFICULTIES: raise ValueError('invalid_difficulty')
+            epoch=counter(message.get('epoch'),1)
             if room['host'] != member['id'] and difficulty != room['difficulty']: return
-            if message.get('epoch') != room['epoch']: return
+            if epoch != room['epoch']: return
             room.update(epoch=room['epoch']+1, revision=0, layout=None, confidence=0., source=None,
                         difficulty=difficulty, started_by=member['id'], dirty=True)
             for player in room['members'].values(): player['position'] = None
             return
         if message.get('type') != 'update': raise ValueError('invalid_message')
-        if message.get('epoch') != room['epoch']: return
-        if 'username' in message:
-            name=username(message['username'])
-            if name!=member['username']:member['username']=name;room['dirty']=True
+        # Validate the entire update before changing any shared state. A bad
+        # position must not sneak in a rename or stronger layout first.
+        epoch=counter(message.get('epoch'),1)
+        # Old-run packets may carry the previous difficulty's layout pool.
+        # Ignore them without touching state or disconnecting a genuine peer.
+        if epoch!=room['epoch']:return
+        name=username(message['username']) if 'username' in message else member['username']
+        revision=counter(message['revision']) if 'revision' in message else None
+        position_layout=message.get('layout')
+        if position_layout is not None and (type(position_layout) is not int or position_layout not in layouts_for(room['difficulty'])):
+            raise ValueError('invalid_message')
         evidence = message.get('evidence')
         if evidence is not None:
             if not isinstance(evidence, dict): raise ValueError('invalid_message')
             layout, score = evidence.get('layout'), evidence.get('confidence')
-            if (type(layout) is not int or layout not in layouts_for(room['difficulty']) or
-                    type(score) not in (int, float) or not math.isfinite(score) or not .75 <= score <= 1):
+            if type(layout) is not int or layout not in layouts_for(room['difficulty']):
                 raise ValueError('invalid_message')
+            bounded_number(score,.75,1)
+        if 'position' in message:
+            position=message['position']
+            if position is not None:
+                if not isinstance(position,list) or len(position)!=2:raise ValueError('invalid_message')
+                for coordinate in position:bounded_number(coordinate,0,100)
+        if name!=member['username']:member['username']=name;room['dirty']=True
+        if evidence is not None:
             if score > room['confidence']:
                 if layout != room['layout']:
                     room['revision'] += 1
                     for player in room['members'].values(): player['position'] = None
                 room.update(layout=layout, confidence=score, source=member['id'], dirty=True)
         if 'position' in message:
-            position = message['position']
-            if position is not None and (not isinstance(position, list) or len(position) != 2 or
-                    any(type(n) not in (int, float) or not math.isfinite(n) or not 0 <= n <= 100 for n in position)):
-                raise ValueError('invalid_message')
-            if (room['layout'] is not None and message.get('revision') == room['revision'] and
-                    message.get('layout') == room['layout']):
+            if (room['layout'] is not None and revision == room['revision'] and
+                    position_layout == room['layout']):
                 member.update(position=position, seen=time.monotonic()); room['positions_dirty'] = True
 
     async def write(self, socket, queue):

@@ -1,6 +1,16 @@
-# Eggheist party navigation
+# Eggheist tracking and party navigation
 
 ## Language
+
+**Total points**: A player's cumulative Egg Heist points across earlier tiers and Egg Emperor. A known total is distinct from an unknown legacy total; known zero is a valid observation. Each subsequent recorded award changes the known total in order, with a floor of zero after each award.
+
+**Run award**: The actual signed points gained or lost in one run, including any daily bonus. It is separate from the cumulative total and stays unchanged in history even if a loss reaches the zero floor.
+
+**Emperor eggs**: Progress within Egg Emperor, derived from the cumulative total above the Emperor threshold. The default threshold is 14,550 total points, with 180 additional points per egg. Before that threshold, progression is expressed as total points rather than an Emperor egg count.
+
+**Progress calibration**: An explicit pairing of a cumulative total, Emperor egg count and within-egg progress observed together. It establishes the Emperor threshold without replacing the observed total or run history.
+
+**Map-only tracking**: Navigation without an active ledger run. Explicit result entry or a recognized Inventory/result capture can switch the player into recording results; an observed starting balance is optional for recorded runs.
 
 **Party**: Up to three people sharing navigation through one invite code. Membership is independent of each person's run ledger.
 

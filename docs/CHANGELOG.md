@@ -1,5 +1,22 @@
 # Changes
 
+## 0.3.1
+
+- Capture Inventory while map-only tracking is active to start a recorded run.
+  Capture or enter points and save directly; rapid captures stay queued together.
+- Show total Egg Heist points before Emperor, then also show Emperor eggs.
+  Preserve existing calibration and offer optional calibration from a single
+  result screen. Recognize earlier-tier point results too.
+- Expand the tutorial with map-pack download and current-stat setup buttons,
+  annotated examples and English/Brazilian Portuguese instructions.
+- Add **Keep status bar between runs** in Map & routes > Overlay, off by default.
+  The compact, click-through bar respects game focus and the overlay toggle.
+- Validate party packets on both the relay and client, bound message/event rates
+  and reject malformed values before updating shared state. Navigation packets
+  cannot supply executable commands, files or update URLs.
+- Preserve known total points at zero after losses and handle zero-point results
+  without breaking the forecast, save flow or next startup.
+
 ## 0.3.0
 
 The release download was rebuilt with a matching-background forecast panel,
