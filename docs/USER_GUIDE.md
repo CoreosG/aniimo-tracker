@@ -87,15 +87,22 @@ its source unless a separate local copy is already installed.
 Settings are grouped into **General**, **Goals & budget**, **Shortcuts**, and
 **Storage & updates**. Map route targets and icon visibility are separate controls.
 
-Map controls use four sections: **Route**, **Icons**, **Overlay** and **Tools**.
+Map controls use four visible section buttons: **Route**, **Icons**, **Overlay** and **Tools**.
 Overlay contains live opacity, size and zoom previews, a position reset, and
 **Low CPU (1.5s)** position updates. Tools contains minimap calibration and imports.
 **Stop map-only session** is beside the tracking controls at the top. The overlay
 shows a compact status even before map setup; it tells you when a map pack is needed.
 
-**Map & routes → Overlay → Keep status bar between runs** keeps a compact in-game
+**Map & routes → Persistent status bar** (at the top, below the tracking controls) keeps a compact in-game
 status header visible even while idle or paused. It is **off by default**. The master
 **Show overlay** switch still hides it; enabling the header does not start a run.
+
+The bar shows your configured shortcuts. **Ctrl+Shift+F7** calls the same
+**Start run** action as the button: an entered balance is optional, and a blank
+balance starts the run anyway. This also switches map-only tracking into a
+recorded run. Change or disable the shortcut in Settings. If an older custom
+shortcut already uses that combination, it is preserved and the new start
+shortcut stays blank until you choose a free combination.
 
 ## Budget and analytics
 

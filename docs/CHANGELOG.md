@@ -1,5 +1,16 @@
 # Changes
 
+## 0.3.3
+
+- Replace the map-settings dropdown with visible Route, Icons, Overlay and Tools
+  section buttons, verified in English and Brazilian Portuguese.
+- Move **Persistent status bar** to the main map controls so it is visible
+  whichever settings section is open. It shows start/capture/save hints and
+  remains controlled by the existing overlay visibility toggle.
+- Add a customizable **Start run** shortcut, **Ctrl+Shift+F7**, calling the same
+  action as the existing button. Balance remains optional. Preserve older
+  custom bindings if they already use the new default combination.
+
 ## 0.3.2
 
 - Show an available-update banner at the top of the tracker.

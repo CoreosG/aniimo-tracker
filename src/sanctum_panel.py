@@ -127,6 +127,10 @@ class SanctumPanel:
         self.move_button=ttk.Button(actions,text='Move overlay',command=self.toggle_move);self.move_button.pack(side='left')
         self.stop_only_button=ttk.Button(actions,text='Stop map-only session',command=self.stop_map_only,style='Card.TButton')
         self.stop_only_button.pack(side='right')
+        status_options=ttk.Frame(self.tab);status_options.pack(fill='x',pady=(0,12))
+        self.persistent_check=ttk.Checkbutton(status_options,text='Persistent status bar',variable=self.always_status,command=self.save_preferences)
+        self.persistent_check.pack(side='left',padx=(0,12))
+        ttk.Label(status_options,text='Keep run status and shortcut hints visible between runs.',foreground='#9aabc3',wraplength=400).pack(side='left')
         body=ttk.Frame(self.tab);body.pack(fill='both',expand=True)
         side=ttk.Frame(body);side.pack(side='left',fill='y',padx=(0,18))
         scroll=tk.Canvas(side,width=285,bg='#0d1421',highlightthickness=0)
@@ -137,9 +141,14 @@ class SanctumPanel:
         scroll.bind('<Configure>',lambda e:scroll.itemconfigure(window,width=e.width))
         self.app.enable_wheel_scroll(scroll,controls)
         self.map_section=tk.StringVar(value='Route')
-        section_choice=ttk.Combobox(controls,textvariable=self.map_section,values=('Route','Icons','Overlay','Tools'),state='readonly')
-        section_choice.pack(fill='x',pady=(0,12))
-        section_choice.bind('<<ComboboxSelected>>',lambda event:self.show_map_section())
+        ttk.Label(controls,text='MAP SETTINGS',foreground='#9aabc3',font=('Segoe UI Semibold',9)).pack(anchor='w',pady=(0,6))
+        section_tabs=ttk.Frame(controls);section_tabs.pack(fill='x',pady=(0,12))
+        section_tabs.columnconfigure((0,1),weight=1,uniform='sections')
+        self.section_buttons={}
+        for index,name in enumerate(('Route','Icons','Overlay','Tools')):
+            button=ttk.Radiobutton(section_tabs,text=name,value=name,variable=self.map_section,command=self.show_map_section,style='Chip.TRadiobutton')
+            button.grid(row=index//2,column=index%2,sticky='ew',padx=2,pady=2)
+            self.section_buttons[name]=button
         self.map_sections={name:ttk.Frame(controls) for name in ('Route','Icons','Overlay','Tools')}
         self.map_sections['Route'].pack(fill='x')
         section=self.map_sections['Route']
@@ -180,7 +189,6 @@ class SanctumPanel:
         self.advanced=options
         ttk.Checkbutton(options,text='Live overlay preview',variable=self.preview_overlay,command=self.tick,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
         ttk.Checkbutton(options,text='Capture / save status in overlay',variable=self.capture_status,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
-        ttk.Checkbutton(options,text='Keep status bar between runs',variable=self.always_status,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
         for title,var,lo,hi in [('Opacity',self.opacity,15,100),('Overlay size',self.overlay_size,350,950),('Zoom',self.zoom,1,3)]:
             row=ttk.Frame(options,style='Panel.TFrame');row.pack(fill='x',pady=(9,0))
             ttk.Label(row,text=title,style='Panel.TLabel').pack(side='left')
@@ -203,7 +211,7 @@ class SanctumPanel:
         workspace=ttk.Frame(body,style='Panel.TFrame',padding=18);workspace.pack(side='left',fill='both',expand=True)
         bar=ttk.Frame(workspace,style='Panel.TFrame');bar.pack(fill='x')
         ttk.Label(bar,text='LAYOUT',style='Panel.TLabel',foreground='#9aabc3',font=('Segoe UI Semibold',9)).pack(side='left')
-        self.layout_choice=ttk.Combobox(bar,textvariable=self.layout,values=['Auto / waiting']+[str(n) for n in layouts_for(self.difficulty.get())],state='readonly',width=16)
+        self.layout_choice=ttk.Combobox(bar,textvariable=self.layout,values=['Auto / waiting']+[str(n) for n in layouts_for(self.difficulty.get())],state='readonly',width=24)
         self.layout_choice.pack(side='right');self.layout_choice.bind('<<ComboboxSelected>>',lambda e:self.select_layout())
         ttk.Label(workspace,textvariable=self.status,style='Panel.TLabel',foreground='#79dcc8',wraplength=660).pack(anchor='w',pady=(12,8))
         self.preview=tk.Canvas(workspace,height=380,bg='#101826',highlightthickness=0)
@@ -622,13 +630,21 @@ class SanctumPanel:
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
+        if self.always_status.get() and not self.app.ledger.active_start() and not preview:
+            start=self.app.shortcut_hint('start')+' start run' if self.app.shortcuts['start'] else 'Start run in tracker'
+            ready,_=self.app.result_ready()
+            actions=[]
+            if self.app.shortcuts['capture']:actions.append(self.app.shortcut_hint('capture')+' capture')
+            if ready and self.app.shortcuts['save']:actions.append(self.app.shortcut_hint('save')+' save')
+            pending=any(self.app.fields[k].get().strip() or k in self.app.draft_images for k in ('money','points')) or self.app.pending_ocr or self.app.auto_busy or self.app.auto_pending or self.app.busy_capture
+            if ready:
+                if not details:details='Points ready\n'+' · '.join(actions)
+            elif not pending:details=start+'\n'+' · '.join(actions)
+            elif not details:details='Result pending\n'+' · '.join(actions)
+        if self.always_status.get() and self.app.ledger.active_start() and not preview and not details:
+            details='Run active'
         if self.always_status.get() and not self.session.watching and not preview:
-            label='Tracker ready'
-            if not details:
-                details='\n'+self.app.shortcut_hint('capture')+' capture to start'
-            elif not self.app.ledger.active_start() and not any(self.app.fields[k].get().strip() for k in ('money','points')):
-                label='Ready · '+self.app.shortcut_hint('capture')+' capture to start'
-                details=''
+            label='Ready'
         # Map feedback already describes the current view; omit duplicate
         # waiting/run text so the bar stays at two short lines.
         if header_only and details and self.session.watching:details='\n'+details.partition('\n')[2]

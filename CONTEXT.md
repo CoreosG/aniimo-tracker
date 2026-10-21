@@ -38,6 +38,11 @@
 
 ## Map and distribution invariants
 
+Map settings sections use visible buttons rather than a dropdown. Persistent
+status visibility is a top-level map control, independent of the selected
+settings page. Start-run hotkeys call the same optional-balance action as the
+manual Start run button; adding a default must preserve existing custom keys.
+
 Route targets and icon visibility are independent. Rich-room and trial goals use the downloaded route graph. Exit preference applies separately to routes from both entrances; the default remains the nearest exit. A navigation preference never changes the run ledger.
 
 A changed capture target invalidates custom reading areas and prior map confirmation. Monitor-relative areas cannot be silently reused as client-relative areas. Default portal recognition scales independently of native custom marker calibration; a resolution change can require recalibrating custom markers.

@@ -1,5 +1,14 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Ready|Pronto
+Persistent status bar|Barra de status persistente
+Keep run status and shortcut hints visible between runs.|Mostrar o status e os atalhos entre partidas.
+MAP SETTINGS|CONFIGURAÇÕES DO MAPA
+Ready · tracker on|Pronto · aplicativo ativo
+ start run| iniciar partida
+Start run in tracker|Inicie a partida no aplicativo
+Points ready|Pontos prontos
+Result pending|Resultado pendente
 Aniimo moved or lost focus during capture. Capture again when the game is ready.|O Aniimo mudou de posição ou perdeu o foco durante a captura. Capture novamente quando o jogo estiver pronto.
 Check on startup and every 30 minutes|Verificar ao iniciar e a cada 30 minutos
 Update & restart|Atualizar e reiniciar
@@ -819,7 +828,7 @@ HELP_PT_BR='''COMO REGISTRAR SUAS PARTIDAS
 2. Após as compras, capture o inventário com {capture} para iniciar com o saldo observado. O botão Iniciar partida também aceita um saldo manual ou vazio. Uma captura não reconhecida inicia sem saldo quando não há partida ativa nem resultado pendente. Iniciar ainda não consome um ticket.
 3. Dentro do Santuário, abra o mapa com {map}, mostrando os dois portais. A barra indica Identificando mapa… e depois a variante confirmada. O mapa da sobreposição fica oculto enquanto o mapa do jogo está aberto. Ao fechar o mapa, a sobreposição acompanha o minimapa. Um minimapa no lobby não confirma a variante.
 4. Ao terminar, use {capture} nas telas de saque e pontos, ou preencha os valores manualmente. Os pontos são obrigatórios; o saque é opcional. Saque vazio significa desconhecido, não zero. As capturas entram em uma fila de leitura local.
-5. Confira o resultado e clique em Salvar partida, ou pressione {save} quando os pontos estiverem prontos. O atalho aguarda a leitura terminar e aceita pontos sem saque. Salvar conta o resultado e o ticket uma vez e encerra o acompanhamento. Com Manter barra entre partidas ativado, a barra permanece no jogo; o mapa fica oculto até iniciar outro acompanhamento.
+5. Confira o resultado e clique em Salvar partida, ou pressione {save} quando os pontos estiverem prontos. O atalho aguarda a leitura terminar e aceita pontos sem saque. Salvar conta o resultado e o ticket uma vez e encerra o acompanhamento. Com Barra de status persistente ativada, a barra permanece no jogo; o mapa fica oculto até iniciar outro acompanhamento.
 
 DERROTAS E CORREÇÕES
 
@@ -835,7 +844,7 @@ As dificuldades Iniciante e Difícil têm seus próprios mapas. Pesadelo e Caos 
 
 As duas rotas são alternativas independentes: laranja contínuo começa no portal laranja; azul tracejado começa no portal azul. Cada rota procura cumprir a quantidade de salas com chave e/ou ninhos solicitada e terminar na saída mais próxima. Ninhos indicam locais possíveis de ovos. Os ícones de portas, ovos, desafios e baús podem ser mostrados separadamente. Desafios não confirmados ficam ocultos por padrão e aparecem com ? quando habilitados.
 
-Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Mapa e rotas. Manter barra entre partidas mostra uma barra compacta enquanto Aniimo estiver em primeiro plano, mesmo sem partida ativa. Atalhos podem ser alterados nas Configurações sem reiniciar.
+Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Mapa e rotas. A opção Barra de status persistente, no topo de Mapa e rotas, mostra uma barra compacta enquanto Aniimo estiver em primeiro plano, mesmo sem partida ativa. Atalhos podem ser alterados nas Configurações sem reiniciar.
 
 CAPTURA E LEITURA DE TEXTO
 

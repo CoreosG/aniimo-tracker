@@ -1,10 +1,10 @@
 """Editable shortcuts with keyboard-layout-aware character keys."""
 import ctypes
 
-DEFAULT_SHORTCUTS=dict(capture='Ctrl+Shift+F8',save='Ctrl+Shift+F9',overlay=';',move='',watch='',clear='Ctrl+Shift+F10',map='M',close_map='Esc')
-LABELS=dict(capture='Capture screen',save='Save ready run',overlay='Toggle overlay',move='Move / lock overlay',watch='Toggle map tracking (pause/resume)',clear='Clear empty result draft',map='Game map key',close_map='Game close-map key')
-GLOBAL_ACTIONS=('capture','save','clear')
-ACTION_IDS=dict(capture=1,save=2,clear=3,overlay=5,move=6,watch=7)
+DEFAULT_SHORTCUTS=dict(start='Ctrl+Shift+F7',capture='Ctrl+Shift+F8',save='Ctrl+Shift+F9',overlay=';',move='',watch='',clear='Ctrl+Shift+F10',map='M',close_map='Esc')
+LABELS=dict(start='Start run',capture='Capture screen',save='Save ready run',overlay='Toggle overlay',move='Move / lock overlay',watch='Toggle map tracking (pause/resume)',clear='Clear empty result draft',map='Game map key',close_map='Game close-map key')
+GLOBAL_ACTIONS=('start','capture','save','clear')
+ACTION_IDS=dict(capture=1,save=2,clear=3,start=4,overlay=5,move=6,watch=7)
 MODIFIERS={'ctrl':2,'control':2,'shift':4,'alt':1,'win':8,'windows':8}
 NAMED={'esc':27,'escape':27,'space':32,'enter':13,'return':13,'tab':9,'backspace':8,'delete':46,'insert':45,'home':36,'end':35,'pageup':33,'pagedown':34,'left':37,'up':38,'right':39,'down':40}
 

@@ -70,8 +70,13 @@ class App(tk.Tk):
         self.hotkeys_enabled=hotkeys
         self.shortcuts_path=self.data_dir/'shortcuts.json'
         try:
-            self.shortcuts={**DEFAULT_SHORTCUTS,**json.loads(self.shortcuts_path.read_text(encoding='utf-8'))}
-            self.shortcut_specs=compile_shortcuts(self.shortcuts)
+            saved_shortcuts=json.loads(self.shortcuts_path.read_text(encoding='utf-8'))
+            self.shortcuts={**DEFAULT_SHORTCUTS,**saved_shortcuts}
+            try:self.shortcut_specs=compile_shortcuts(self.shortcuts)
+            except ValueError:
+                if 'start' in saved_shortcuts:raise
+                self.shortcuts['start']=''
+                self.shortcut_specs=compile_shortcuts(self.shortcuts)
         except (OSError,ValueError,TypeError,AttributeError):
             self.shortcuts=dict(DEFAULT_SHORTCUTS)
             self.shortcut_specs=compile_shortcuts(self.shortcuts)
@@ -614,7 +619,7 @@ class App(tk.Tk):
 1. Keep the tracker open or minimized while you play Aniimo on DISPLAY1.
 2. Start run accepts a manually entered Balance (optional); leave it blank if unknown. Or capture Inventory with Ctrl+Shift+F8 to start with an observed balance. An unrecognized automatic capture starts without a balance if no run or unsaved result exists. The overlay header says Waiting for map until a full map confirms the layout. No ticket is consumed yet. For just the map, use Map > Start map tracker without creating a run.
 3. Enter Chaos and open M once with both portals visible. After the full map is recognized, close M; the overlay follows the minimap. Lobby minimap matches cannot select a layout. The same Capture screen action can read an open M map or resume an already confirmed map from gameplay.
-4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish. Saving ends navigation. Enable Keep status bar between runs in Map > Overlay to retain a compact in-game header between runs. All shortcuts can be changed in Settings.
+4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish. Saving ends navigation. Enable Persistent status bar at the top of Map & routes to retain a compact in-game header between runs. All shortcuts can be changed in Settings.
 5. Check the points and click Save run. This also works with no recorded start or screenshots. Points and one ticket are counted once; loot value never adds cash.
 
 Map & routes uses one Pause map / Resume map toggle in both tracked-run and map-only modes. The same configurable Toggle map tracking shortcut does both. Without a run, Start map tracker begins map-only mode. An Inventory capture switches into run logging automatically; capturing points or entering points and saving also records a result. Gameplay and map captures alone do not record runs. Pause preserves the detected layout. Every game-map key press requests a fresh full-map check before minimap following. Unknown screenshots do not change stats.
@@ -921,6 +926,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 if key == 1:
                     self.capture_image('auto')
                 elif key == 2:self.quick_save_run()
+                elif key == 4:self.begin_run(manual=True)
                 elif key == 5:
                     self.sanctum.overlay_enabled.set(not self.sanctum.overlay_enabled.get())
                     self.sanctum.toggle_overlay()

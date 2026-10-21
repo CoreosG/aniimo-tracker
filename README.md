@@ -26,6 +26,7 @@
 
 | In the game | Press | What happens |
 | :--- | :---: | :--- |
+| Any screen | **Ctrl + Shift + F7** | Use Start run; balance is optional |
 | Inventory, after shopping | **Ctrl + Shift + F8** | Start a run and read your balance |
 | Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
 | Egg Heist result | **Ctrl + Shift + F8** | Read points gained or lost |
@@ -72,7 +73,7 @@ Capture follows the Aniimo window's game area as it moves or resizes, and the ov
 
 **Total points come first**, including before Egg Emperor. Egg counts are derived automatically; optional calibration uses the total, eggs and progress shown on the same screen. The tutorial now includes setup buttons and annotated examples distinguishing total points from a run's award. Map-only captures switch into run tracking or result entry when needed.
 
-Want a compact status bar even while idle or paused? Enable **Map & routes → Overlay → Keep status bar between runs**. It is off by default and still follows the master **Show overlay** switch.
+Want a compact status bar even while idle or paused? Enable **Persistent status bar** at the top of **Map & routes**, beside the tracking controls. It is off by default and still follows the master **Show overlay** switch. Its hints use your customized start/capture/save shortcuts.
 
 ### The 0.3 interface
 
