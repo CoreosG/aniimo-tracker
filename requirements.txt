@@ -1,0 +1,11 @@
+Pillow>=12.2,<13
+winrt-runtime==3.2.1
+winrt-Windows.Foundation==3.2.1
+winrt-Windows.Foundation.Collections==3.2.1
+winrt-Windows.Globalization==3.2.1
+winrt-Windows.Storage==3.2.1
+winrt-Windows.Storage.Streams==3.2.1
+winrt-Windows.Graphics.Imaging==3.2.1
+winrt-Windows.Media.Ocr==3.2.1
+pywebview==6.2.1
+opencv-python-headless==5.0.0.93

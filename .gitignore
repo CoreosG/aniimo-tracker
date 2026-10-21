@@ -1,0 +1,27 @@
+# Local environments and build products
+.venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.exe
+*.download
+
+# Downloaded third-party map data/artwork and optional website mirror
+assets/simulator/
+assets/map-*.webp
+
+# Player data, captures and local configuration must never be published
+*.db
+*.db-*
+*.sqlite*
+screenshots/
+calibration/
+sanctum/
+shortcuts.json
+control.json
+viewer-status.json
+viewer-error.txt
+.env
+.env.*
+*.log
