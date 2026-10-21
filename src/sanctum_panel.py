@@ -408,7 +408,6 @@ class SanctumPanel:
 
     def tick(self):
         self.map_setup.tick()
-        if not self.assets_ready:return
         self.poll_map_keys()
         details=self.app.overlay_run_status() if self.capture_status.get() else ''
         if details!=self.last_capture_status:
@@ -430,7 +429,7 @@ class SanctumPanel:
                         self.route_status.set('Simulator open · waiting for a detected or manually selected layout')
             except (OSError,ValueError,KeyError):
                 pass
-        capturing=self.app.busy_capture or self.app.auto_busy
+        capturing=self.app.busy_capture or self.app.auto_busy or not self.assets_ready
         if self.session.watching and in_game and self.scan_until>now and now>=self.next_scan and not self.busy and not capturing:
             self.scan()
             self.next_scan = now+1.2
@@ -522,7 +521,7 @@ class SanctumPanel:
         arranging=self.overlay.movable and self.overlay_enabled.get()
         on_map_tab=self.app.tabs.select()==str(self.app.sanctum_tab)
         if not on_map_tab:self.preview_overlay.set(False)
-        previewing=self.preview_overlay.get() and on_map_tab and app_is_foreground()
+        previewing=self.assets_ready and self.preview_overlay.get() and on_map_tab and app_is_foreground()
         if previewing!=self.last_previewing:
             self.last_previewing=previewing;self.overlay_dirty=True
         waiting=self.session.watching and self.session.context_id is not None and not self.session.map_confirmed
@@ -535,13 +534,14 @@ class SanctumPanel:
 
     def show_overlay(self,header_only=False,preview=False):
         size=round(self.overlay_size.get());screen=monitors()[self.app.ledger.settings()['monitor']]['bbox']
-        engine=self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)
+        engine=(self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)) if self.assets_ready else None
         draw_map=not header_only and engine is not None and (preview or self.session.map_confirmed or self.overlay.movable)
         live=time.monotonic()-self.position_time<2
         player=(self.player or [50,50]) if preview else self.player
         image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
+        if not self.assets_ready:label='Map pack required · download in the Map tab'
         position=self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
         if not any(position[0]+size>m['bbox'][0]+40 and position[0]<m['bbox'][2]-40 and position[1]+size>m['bbox'][1]+40 and position[1]<m['bbox'][3]-40 for m in monitors()):
             position=[screen[2]-size-20,screen[1]+70]

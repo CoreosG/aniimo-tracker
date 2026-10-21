@@ -56,6 +56,7 @@ Download map pack|Baixar pacote de mapas
 Downloading maps…|Baixando mapas…
 Installed layout|Layout instalado
 Map pack ready. Open the game map to begin.|Mapas prontos. Abra o mapa do jogo para começar.
+Map pack required · download in the Map tab|Mapas necessários · baixe na aba Mapa
 Map download failed. Retry; your run history was not changed.|Falha ao baixar mapas. Tente novamente; seu histórico não foi alterado.
 Download the map pack in Map & routes first.|Baixe o pacote de mapas em Mapa e rotas primeiro.
 

@@ -5,11 +5,33 @@ from app import App
 
 
 class OverlayPreviewTests(unittest.TestCase):
+    def test_map_only_start_shows_status_in_game_before_map_pack_download(self):
+        with tempfile.TemporaryDirectory() as directory,patch('map_setup_panel.maps_ready',return_value=False),patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                baseline=app.ledger.summary()
+                app.sanctum.watch_action()
+                with patch('sanctum_panel.game_is_foreground',return_value=True):
+                    app.sanctum.tick();app.update_idletasks()
+                    self.assertTrue(app.sanctum.overlay.visible)
+                    canvas=app.sanctum.overlay.canvas
+                    texts=' '.join(canvas.itemcget(item,'text') for item in canvas.find_all() if canvas.type(item)=='text')
+                    self.assertIn('Map pack required',texts)
+                    self.assertIsNone(app.ledger.active_start())
+                    self.assertEqual(app.ledger.summary(),baseline)
+                    app.sanctum.watch_action();app.sanctum.tick()
+                    self.assertFalse(app.sanctum.overlay.visible)
+            finally:app.close()
+
     def test_map_only_overlay_keeps_map_status_without_ledger_lines(self):
         with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
             app=App(directory,hotkeys=False)
             try:
-                app.sanctum.watch_action();app.sanctum.show_overlay()
+                app.sanctum.watch_action()
+                app.busy_capture=True
+                with patch('sanctum_panel.game_is_foreground',return_value=True):
+                    app.sanctum.tick();app.update_idletasks()
+                    self.assertTrue(app.sanctum.overlay.visible)
                 canvas=app.sanctum.overlay.canvas
                 texts=' '.join(canvas.itemcget(item,'text') for item in canvas.find_all() if canvas.type(item)=='text')
                 self.assertIn('Waiting for map',texts)
