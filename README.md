@@ -26,7 +26,7 @@
 | :--- | :---: | :--- |
 | Inventory, after shopping | **Ctrl + Shift + F8** | Start a run and read your balance |
 | Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
-| Egg Emperor result | **Ctrl + Shift + F8** | Read points gained or lost |
+| Egg Heist result | **Ctrl + Shift + F8** | Read points gained or lost |
 | Results ready | **Ctrl + Shift + F9** | Save the run; loot is optional |
 | During navigation | **M** | Identify the map from the game’s full map |
 | During navigation | **;** | Show or hide the overlay |
