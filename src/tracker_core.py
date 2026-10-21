@@ -257,6 +257,14 @@ class Ledger:
         with self.connect() as db:
             return [dict(r) for r in db.execute('SELECT * FROM corrections ORDER BY id DESC')]
 
+    def update_balance_checkpoint(self,checkpoint_id,coins,approximate=False):
+        """Edit the original wallet observation; preserve stat cutoffs and runs."""
+        if type(coins) is not int or coins<0:raise ValueError('Balance must be a non-negative whole number.')
+        with self.connect() as db:
+            row=db.execute('SELECT * FROM corrections WHERE id=?',(checkpoint_id,)).fetchone()
+            if row is None:raise ValueError('Balance checkpoint no longer exists.')
+            db.execute('UPDATE corrections SET coins=?,approximate=? WHERE id=?',(coins,int(bool(approximate)),checkpoint_id))
+
     def active_start(self):
         with self.connect() as db:
             row = db.execute('SELECT * FROM run_starts WHERE run_id IS NULL AND cancelled=0 ORDER BY id DESC LIMIT 1').fetchone()

@@ -1,172 +1,92 @@
-# Aniimo Eggheist Tracker
+<div align="center">
+  <img src="assets/branding/icon.png" width="112" alt="Eggheist Tracker icon">
+  <h1>Aniimo Eggheist Tracker</h1>
+  <p>Track your runs. Plan your rank goal. Find your way through Lost Sanctum.</p>
+  <p>
+    <a href="https://github.com/CoreosG/aniimo-tracker/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/CoreosG/aniimo-tracker?style=flat-square&color=79dcc8"></a>
+    <img alt="Windows 10 and 11" src="https://img.shields.io/badge/platform-Windows_10_%2F_11-8fbaff?style=flat-square">
+    <img alt="English and Brazilian Portuguese" src="https://img.shields.io/badge/languages-EN_%2F_PT--BR-b6a0f4?style=flat-square">
+  </p>
+  <p><b><a href="https://github.com/CoreosG/aniimo-tracker/releases/latest">Download for Windows</a></b> · <a href="docs/USER_GUIDE.md">User guide</a> · <a href="server/README.md">Self-host a party server</a> · <a href="https://github.com/CoreosG/aniimo-tracker/issues">Report an issue</a></p>
+</div>
 
-A Windows desktop companion for tracking Eggheist runs, planning an Egg Emperor
-rank goal, and displaying a local Lost Sanctum route overlay. English and
-Português (Brasil) are available in Settings.
+---
 
-## Features
+## Get started
 
-- Capture the game screen with one customizable shortcut. OCR recognizes coin
-  balances, loot results and points; review or correct readings before saving.
-- Start with an optional balance, record points-only runs, mark losses, edit
-  saved runs, and log paid or free tickets.
-- Forecast remaining runs, tickets, playtime and the per-run break-even budget,
-  including keys and gear costs. Skipped play days retain your ticket stock.
-- Explore loot, spending, wallet checkpoints, points and tickets on graphs.
-- Recognize Lost Sanctum layouts from the full game map and follow the player
-  through screen-based minimap matching. Plan routes from both entrances for
-  keys, eggs, both, rich rooms or trials; choose a preferred exit while keeping
-  both entrance routes visible. Toggle room icons, monsters and the legend
-  independently; click a room in the app preview for details.
-- Move and lock the overlay, toggle it with `;`, and keep a compact status bar
-  while the game map is open. Opacity, size and zoom controls automatically
-  show a live overlay preview while the app is focused; leave the Map tab or
-  turn off **Live overlay preview** to finish adjusting.
-- Keep screenshots from the latest **30 saved runs** by default, configurable
-  in Settings. Older run records and statistics remain available.
-- Create or join a **three-player party** with a random invite code and your own
-  username. Share circular player markers and the strongest map identification.
-  The host controls party difficulty and can reset navigation for a new run.
+1. Download **AniimoTracker.exe** from the [latest release](https://github.com/CoreosG/aniimo-tracker/releases/latest) and open it. **No Python required.**
+2. Follow the tutorial, enter your own current stats, and select your game monitor. Reopen the tutorial anytime with **?**.
+3. In **Map & routes**, click **Download map pack** once. The app downloads the maps directly from AniimoTools and MOANIIMO.
 
-## Download for Windows
+**Updating?** Close the older tracker and open the new executable. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`. Check for updates in **Settings → Storage & updates**.
 
-Download **[AniimoTracker.exe from the latest release](https://github.com/CoreosG/aniimo-tracker/releases/latest)** and open it. No Python or administrator access is required. In **Map & routes**, click **Download map pack** once. The map files download directly from AniimoTools and MOANIIMO and stay on your PC.
+## One shortcut, the right reading
 
-The first-run tutorial explains capture, points, saving, overlays and parties. Reopen it anytime with **?** at the top. Its example screenshots are anonymized; original player captures are not distributed. All shortcuts shown in the guide follow your current settings.
+| In the game | Press | What happens |
+| :--- | :---: | :--- |
+| Inventory, after shopping | **Ctrl + Shift + F8** | Start a run and read your balance |
+| Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
+| Egg Emperor result | **Ctrl + Shift + F8** | Read points gained or lost |
+| Results ready | **Ctrl + Shift + F9** | Save the run; loot is optional |
+| During navigation | **M** | Identify the map from the game’s full map |
+| During navigation | **;** | Show or hide the overlay |
 
-**Settings → App updates** checks GitHub once a day and offers a manual check. New versions download when you click the button; nothing is installed or executed automatically. Replace the old executable after closing it. Your history and settings remain in `%LOCALAPPDATA%/AniimoTracker`.
+All shortcuts are customizable. You can also start without a balance, enter a run manually, record only points, or use **map-only tracking**.
 
-## Run from source
+<details>
+<summary><b>See the capture screens</b></summary>
+<br>
+<p align="center">
+  <img src="assets/tutorial/inventory.png" width="30%" alt="Inventory: capture your starting balance">
+  <img src="assets/tutorial/loot.png" width="30%" alt="Loot result: capture the run’s loot value">
+  <img src="assets/tutorial/points.png" width="30%" alt="Points result: capture the award, then save">
+</p>
+These are anonymized tutorial examples. Original player screenshots are not distributed.
+</details>
 
-Requires **64-bit Windows 10/11**, **Python 3.13** with Tkinter, and Windows OCR
-language support for the game's text. Install Python from
-[python.org](https://www.python.org/downloads/windows/) if needed.
+## What you can do
 
-Clone or download this repository, open PowerShell in its folder, and run:
+| Track and plan | Navigate and play together |
+| :--- | :--- |
+| Editable runs, failures, paid and free tickets | All 21 layouts across four difficulties |
+| Rank, ticket and remaining-playtime forecasts | Routes from both entrances; preferred exits |
+| Key, gear and daily ticket break-even budgets | Key doors, eggs, rich rooms or trials |
+| Loot, wallet, points and ticket graphs | Optional room icons, monsters and legend |
+| Edit historical balance checkpoints to fix outliers | Three-player parties with shared layouts and positions |
+| Keep screenshots for the latest 30 runs, or choose a limit | Movable, click-through overlay with live display previews |
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe setup_maps.py
-.\.venv\Scripts\python.exe app.py
-```
-
-Or run `setup.ps1` followed by `run.ps1`. Neither script needs administrator
-access. The setup downloads map data and artwork directly from **AniimoTools**
-and floor-texture references from **MOANIIMO**, onto your own PC. It parses data
-literals without executing downloaded JavaScript. It does not download or run
-their website application, ads, account scripts or community scripts.
-
-**The map features need this setup step.** After it finishes, the native map
-preview, routes and overlay work locally without the website being open. The
-downloaded files are deliberately excluded from Git. If an upstream page
-changes, setup reports an error; it does not alter your run history. Retry after
-updating the setup tool. The optional original website simulator is opened at
-its source unless a separate local copy is already installed.
-
-Settings are grouped into **General**, **Goals & budget**, **Shortcuts**, and
-**Storage & updates**. Map route targets and icon visibility are separate controls.
-
-## First use
-
-1. Set your current rank, rank progress, tickets and coin balance with **Correct
-   stats**. Configure the target, deadline, ticket budget and costs in Settings.
-   The initial rank/tickets are example values; replace them with your own.
-2. Choose the game monitor. Start a run, with or without a balance, or start
-   map-only tracking from **Map & routes**.
-3. Open the full game map with `M` during a run to identify the layout. Recognition
-   and OCR can be wrong; review the displayed result and calibrate if needed.
-4. Capture the loot and points result screens, then save the run.
-
-Default shortcuts (all customizable):
-
-| Action | Shortcut |
-| --- | --- |
-| Capture screen | `Ctrl+Shift+F8` |
-| Save captured run | `Ctrl+Shift+F9` |
-| Toggle overlay | `;` |
-| Observe game map key | `M` |
-
-The loot valuation is **separate from actual cash**: unsold items do not add to
-the wallet. A starting balance is a wallet checkpoint after sales and shopping.
-Failed runs affect rank and tickets but are excluded from the successful-run
-points average.
+**Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory captures record your wallet after sales and shopping. Failed runs affect progression but stay out of the successful-run points average.
 
 ## Party navigation
 
-Open **Party**, save a username, and create a party or enter a teammate's
-8-character code. The default server is `eggheist.banneret.app`; select
-**Custom / self-hosted server** to use another instance. Everyone in a party
-must use the same server. Joining does not start a tracked run or alter stats;
-start your run or map-only tracking to display party navigation.
+Open **Party**, choose a username, then create a party or join an eight-character code. Up to three players share map identification and circular position markers through the default relay at **eggheist.banneret.app**. A custom server can be selected instead.
 
-The first confident full-map identification is shared. A strictly higher
-evidence score replaces it for everyone. Each player continues recognizing their
-own minimap locally. Circles show names and distinct colors; a dim center and
-"last known" label indicate a stale position, which disappears after 30 seconds.
+Any member can start a **New shared run**; the host controls difficulty. A confirmed map in a new shared run can warn about an unfinished local run, even when the layout repeats. **Warn about unfinished runs** is optional, and map-only users do not receive ledger warnings. Navigation advances without saving or discarding anyone’s unfinished results.
 
-The host can change **Party difficulty** or choose **New shared run**. Both
-clear old navigation for everyone; changing difficulty selects the matching map
-pool. Starting a new run as host also resets the shared map. Other members'
-individual run starts/saves do not reset everyone else's navigation.
+[Party usage and privacy →](docs/USER_GUIDE.md#party-navigation) · [Self-hosting →](server/README.md) · [Capacity measurements →](server/CAPACITY.md)
 
-The relay is self-hostable with Docker or Python and needs only `websockets`.
-See [server/README.md](server/README.md) for ports, TLS, limits and deployment;
-see [capacity measurements](server/CAPACITY.md) for the initial load test.
+## Your data stays yours
 
-## Local data and privacy
+Screenshots, OCR, balances and run history stay on your PC. A party relay receives only the chosen username, shared-run/map information and map coordinates. Its party state is held in memory.
 
-Run history, settings, screenshots and calibrations are stored under
-`%LOCALAPPDATA%\AniimoTracker`. Back up that folder to keep your history.
-Screenshot capture and OCR run locally. While connected to a party, the chosen
-server receives your username, layout evidence and map coordinates and relays
-them to your party. It keeps this state in memory; it receives no screenshots,
-loot values, coin balances or run history. Leaving disconnects the session;
-temporary reconnect reservations expire after 60 seconds. Invite codes grant
-access to a party's navigation, so share them only with intended teammates.
-Map setup makes requests to the credited source sites; opening the optional
-external simulator uses your browser.
+Back up `%LOCALAPPDATA%/AniimoTracker` to preserve your data. The public executable excludes downloaded map art/data and personal databases. See the [user guide](docs/USER_GUIDE.md#local-data-and-privacy) for details.
 
-This repository contains no player's database, run screenshots, credentials or
-compiled application. The small marker crops in `assets/` are game-interface
-recognition references, not full screenshots.
+## Inside the repository
 
-## Development and tests
-
-After installing dependencies and map assets:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover
+```text
+assets/       Recognition references, branding and anonymized tutorial examples
+src/          Desktop app, ledger, OCR, map recognition and party communication
+tests/        Ledger, vision, navigation and desktop regression tests
+docs/         User guide, development and architecture notes
+packaging/    Windows executable specification
+scripts/      Source setup, launch and build helpers
+server/       Lightweight relay deployment and load-test tooling
 ```
 
-To build an executable for local use:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install pyinstaller
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm "Aniimo Tracker.spec"
-```
-
-The public build excludes downloaded map art and route data. It bundles only the small recognition templates, factual portal coordinates and anonymized tutorial examples. Map assets are downloaded directly from their sources through the in-app setup. Third-party content retains its original owners’ rights.
+[Run from source, test and build →](docs/DEVELOPMENT.md) · [Architecture →](docs/ARCHITECTURE.md) · [Contributing →](CONTRIBUTING.md)
 
 ## Credits
 
-- **[AniimoTools — Lost Sanctum](https://aniimotools.dev/map/lost-sanctum/):**
-  the layout catalog, room information, map renders and route graph data used by
-  the native overlay. Please visit and support the original project.
-- **[MOANIIMO — Sanctum finder](https://aniimo.kr/en/palace-finder):**
-  unannotated floor-map references and portal alignment coordinates used for
-  screen matching.
-- **Pawprint Studio / FunPlus:** Aniimo and its game content, including the
-  interface icons used as recognition references.
-- **Pillow, OpenCV, Python/WinRT, pywebview, websockets, and Python/Tk:** the libraries used
-  by this application; their respective licenses apply.
+The map features use resources downloaded directly from **[AniimoTools — Lost Sanctum](https://aniimotools.dev/map/lost-sanctum/)** and **[MOANIIMO — Sanctum finder](https://aniimo.kr/en/palace-finder)**. Please visit and support the original projects. Aniimo and its game content belong to **Pawprint Studio / FunPlus**.
 
-This is an unofficial fan project, with no affiliation or endorsement implied.
-Credits do not transfer ownership or grant a license to third-party content.
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-## Source terms
-
-This repository is public for inspection and feedback. No open-source license
-has been selected for the original tracker code yet. Third-party content always
-remains subject to its owners' terms.
+This is an unofficial fan project. Third-party content retains its owners’ rights; credit does not grant redistribution rights. See [third-party notices](THIRD_PARTY_NOTICES.md). The original tracker source is public for inspection and feedback; an open-source license has not yet been selected.

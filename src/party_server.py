@@ -35,7 +35,7 @@ class Relay:
     def state(self, room):
         return dict(code=room['code'], difficulty=room['difficulty'], epoch=room['epoch'],
                     revision=room['revision'], layout=room['layout'], confidence=room['confidence'],
-                    source=room['source'], host=room['host'],
+                    source=room['source'], host=room['host'], started_by=room.get('started_by'),
                     members=[dict(id=p['id'], username=p['username'], color=p['color'],
                                   online=p['socket'] is not None, position=p['position'],
                                   age=round(time.monotonic()-p['seen'], 1) if p['position'] else None)
@@ -139,12 +139,12 @@ class Relay:
 
     async def command(self, room, member, message):
         if message.get('type') == 'new_run':
-            if room['host'] != member['id']: return
             difficulty = message.get('difficulty', room['difficulty'])
             if difficulty not in DIFFICULTIES: raise ValueError('invalid_difficulty')
+            if room['host'] != member['id'] and difficulty != room['difficulty']: return
             if message.get('epoch') != room['epoch']: return
             room.update(epoch=room['epoch']+1, revision=0, layout=None, confidence=0., source=None,
-                        difficulty=difficulty, dirty=True)
+                        difficulty=difficulty, started_by=member['id'], dirty=True)
             for player in room['members'].values(): player['position'] = None
             return
         if message.get('type') != 'update': raise ValueError('invalid_message')

@@ -42,6 +42,8 @@ class App(tk.Tk):
     def __init__(self, data_dir=None, hotkeys=True):
         super().__init__()
         self.title('Aniimo · Eggheist Tracker')
+        from asset_paths import BUNDLED
+        self.iconbitmap(default=str(BUNDLED/'branding/app.ico'))
         self.geometry(f'{min(1320,self.winfo_screenwidth()-60)}x{min(920,self.winfo_screenheight()-90)}')
         self.minsize(1000,640)
         self.configure(bg=BG)
@@ -225,7 +227,16 @@ class App(tk.Tk):
         ttk.Label(header, textvariable=self.run_heading, style='Title.TLabel').pack(anchor='w', pady=(3, 2))
         guidance=ttk.Label(header, textvariable=self.run_guidance, style='Muted.TLabel')
         guidance.pack(anchor='w')
+        self.party_notice=tk.StringVar(value='')
+        self.party_notice_frame=ttk.Frame(header)
+        ttk.Label(self.party_notice_frame,textvariable=self.party_notice,foreground='#ffd083',wraplength=1000).pack(side='left')
+        ttk.Button(self.party_notice_frame,text='×',width=3,command=lambda:self.set_party_notice('')).pack(side='right')
         header.bind('<Configure>',lambda event:guidance.configure(wraplength=max(300,event.width-56)))
+
+    def set_party_notice(self,text):
+        self.party_notice.set(text)
+        if text:self.party_notice_frame.pack(fill='x',pady=(8,0))
+        else:self.party_notice_frame.pack_forget()
 
     def dashboard(self):
         def wrap_labels(event):
@@ -587,6 +598,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             self.analytics.refresh()
         if hasattr(self,'sanctum'):
             self.sanctum.sync_run()
+            if hasattr(self,'party'):self.party.sync_context()
         state, plan = self.ledger.summary(), forecast(self.ledger)
         s = self.ledger.settings()
         for key, value in dict(rank=f"{state['rank']:,}", tickets=str(state['tickets']),
@@ -1074,9 +1086,10 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         return True,'Ready to save'
 
     def overlay_run_status(self):
-        if self.sanctum.session.standalone:return 'Map tracker only · no run is logged'
+        if self.sanctum.session.standalone:return ''
         active=bool(self.ledger.active_start())
         state='Run active' if active else 'No active run'
+        if active and self.party_notice.get():state+=' · previous run unfinished'
         if active and not self.sanctum.session.map_confirmed:state+=' · waiting for map'
         values=[]
         for name,kind,parser in [('Loot','money',parse_amount),('Pts','points',parse_points)]:
@@ -1187,14 +1200,21 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         ttk.Label(frame, text='History stays saved. Older runs and purchases are already included in these totals.',
                   style='Muted.TLabel', wraplength=510).pack(anchor='w', pady=(5,12))
         values = {}
+        self.stats_editor=window
+        window.fields=values
         initial = dict(rank=str(state['rank']), rank_points=str(state['rank_points']), tickets=str(state['tickets']),
-                       coins=str(state['coins']), lifetime_points='' if state['lifetime_points'] is None else str(state['lifetime_points']))
+                       coins=f"{state['coins']:,}", lifetime_points='' if state['lifetime_points'] is None else str(state['lifetime_points']))
         for key, title in [('rank','Current Egg Emperor rank'), ('rank_points','Points within this rank (0–179)'),
                            ('tickets','Current tickets'), ('coins','Actual current coin balance'),
                            ('lifetime_points','Lifetime total points (optional)')]:
             ttk.Label(frame, text=title, style='Muted.TLabel').pack(anchor='w', pady=(5,2))
             values[key] = tk.StringVar(value=initial[key])
             ttk.Entry(frame, textvariable=values[key], width=42).pack(fill='x')
+            if key=='coins':
+                from balance_history import balance_preview
+                window.balance_preview=tk.StringVar(value=balance_preview(values[key].get()))
+                ttk.Label(frame,textvariable=window.balance_preview,foreground=ACCENT).pack(anchor='w',pady=(4,2))
+                values[key].trace_add('write',lambda *_:window.balance_preview.set(balance_preview(values['coins'].get())))
         ttk.Label(frame, text='47,723 / 47,850 means 53/180 into rank 184.\nK/M currency is rounded; enter full digits when you know the exact balance.',
                   style='Muted.TLabel').pack(anchor='w', pady=12)
         def save():
@@ -1219,16 +1239,8 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         ttk.Button(frame, text='Apply current stats', command=save, style='Accent.TButton').pack(anchor='w')
 
     def show_balance_history(self):
-        window = tk.Toplevel(self)
-        window.title('Balance observations and stat corrections')
-        tree = ttk.Treeview(window, columns=('time','rank','progress','tickets','coins','reason'), show='headings')
-        for key, title in [('time','Observed at'),('rank','Rank'),('progress','Into rank'),('tickets','Tickets'),('coins','Balance'),('reason','Source')]:
-            tree.heading(key, text=title)
-            tree.column(key, width=150 if key in ('time','reason') else 95)
-        tree.pack(fill='both', expand=True)
-        for row in self.ledger.corrections():
-            tree.insert('', 'end', values=(row['timestamp'],row['rank'],row['rank_points'],row['tickets'],
-                ('≈ ' if row['approximate'] else '') + f"{row['coins']:,}",row['reason']))
+        from balance_history import BalanceHistory
+        self.balance_history=BalanceHistory(self)
 
     def log_spending(self):
         if not self.spend_amount.get().strip():

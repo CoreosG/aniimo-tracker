@@ -5,7 +5,7 @@ import shutil
 import sys
 from map_catalog import ALL_LAYOUTS,HIGH_TIER
 
-BUNDLED=Path(__file__).with_name('assets')
+BUNDLED=(Path(__file__).parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parents[1])/'assets'
 ASSETS=Path(os.environ['ANIIMO_MAP_ASSETS']) if os.environ.get('ANIIMO_MAP_ASSETS') else (
     Path(os.environ.get('LOCALAPPDATA',str(Path.home())))/'AniimoTracker'/'map-assets'
     if getattr(sys,'frozen',False) else BUNDLED)

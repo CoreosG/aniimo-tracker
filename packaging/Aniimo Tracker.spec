@@ -1,8 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
+from pathlib import Path
+root=Path(SPECPATH).parent
 
-datas = [(f'assets/{name}','assets') for name in ('blue.png','orange.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json')]
-datas += [('assets/tutorial','assets/tutorial')]
+datas = [(str(root/'assets'/name),'assets') for name in ('blue.png','orange.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json')]
+datas += [(str(root/'assets/tutorial'),'assets/tutorial')]
+datas += [(str(root/'assets/branding/app.ico'),'assets/branding')]
 binaries = []
 hiddenimports = ['clr', 'webview.platforms.winforms', 'webview.platforms.edgechromium']
 tmp_ret = collect_all('winrt')
@@ -18,8 +21,8 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['app.py'],
-    pathex=[],
+    [str(root/'src/app.py')],
+    pathex=[str(root/'src')],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -39,6 +42,7 @@ exe = EXE(
     a.datas,
     [],
     name='AniimoTracker',
+    icon=str(root/'assets/branding/app.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

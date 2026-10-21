@@ -541,7 +541,7 @@ class SanctumPanel:
         player=(self.player or [50,50]) if preview else self.player
         image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
-        if not self.capture_status.get() and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
+        if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
         position=self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
         if not any(position[0]+size>m['bbox'][0]+40 and position[0]<m['bbox'][2]-40 and position[1]+size>m['bbox'][1]+40 and position[1]<m['bbox'][3]-40 for m in monitors()):
             position=[screen[2]-size-20,screen[1]+70]

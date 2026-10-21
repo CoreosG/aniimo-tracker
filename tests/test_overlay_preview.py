@@ -5,6 +5,18 @@ from app import App
 
 
 class OverlayPreviewTests(unittest.TestCase):
+    def test_map_only_overlay_keeps_map_status_without_ledger_lines(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                app.sanctum.watch_action();app.sanctum.show_overlay()
+                canvas=app.sanctum.overlay.canvas
+                texts=' '.join(canvas.itemcget(item,'text') for item in canvas.find_all() if canvas.type(item)=='text')
+                self.assertIn('Waiting for map',texts)
+                self.assertNotIn('Loot',texts)
+                self.assertNotIn('run',texts)
+            finally:app.close()
+
     def test_adjustments_preview_without_confirming_map_or_changing_run(self):
         with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False),patch('sanctum_panel.app_is_foreground',return_value=True):
             app=App(directory,hotkeys=False)

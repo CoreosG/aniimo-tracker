@@ -1,5 +1,21 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Warn about unfinished runs|Avisar sobre partidas não finalizadas
+New party run detected · map updated. Your previous run is unfinished.|Nova partida do grupo detectada · mapa atualizado. Sua partida anterior não foi finalizada.
+previous run unfinished|partida anterior não finalizada
+Could not save party preferences.|Não foi possível salvar as preferências do grupo.
+Balance history / edit|Histórico de saldo / editar
+Balance history|Histórico de saldo
+Select an observation to correct its recorded balance.|Selecione uma observação para corrigir o saldo registrado.
+Edit balance|Editar saldo
+Recorded coin balance|Saldo registrado
+Save balance|Salvar saldo
+Latest checkpoint: current wallet will recalculate.|Observação mais recente: o saldo atual será recalculado.
+Historical checkpoint: newer balances stay unchanged.|Observação histórica: os saldos posteriores serão preservados.
+Balance checkpoint corrected · charts refreshed|Saldo histórico corrigido · gráficos atualizados
+Enter full coins or K/M, such as 7M or 7,654,000.|Digite o valor completo ou K/M, como 7M ou 7.654.000.
+Balance checkpoint no longer exists.|A observação de saldo não existe mais.
+
 Live overlay preview|Prévia ao vivo da sobreposição
 Overlay preview|Prévia da sobreposição
 

@@ -153,7 +153,7 @@ def install(destination, progress=print):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--assets-dir', type=Path, default=Path(__file__).with_name('assets'))
+    parser.add_argument('--assets-dir', type=Path, default=Path(__file__).resolve().parents[1]/'assets')
     args = parser.parse_args()
     try:
         install(args.assets_dir)

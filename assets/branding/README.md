@@ -1,0 +1,5 @@
+# App icon
+
+`icon.png` is the original raster artwork generated with the built-in image_gen tool. `app.ico` exports that artwork at 16, 24, 32, 48, 64, 128 and 256 pixels for the Windows executable, window title and taskbar.
+
+Prompt: Create a polished original Windows desktop application icon for an unofficial Eggheist run tracker and map companion. One centered large stylized luminous pearl-white egg, with a bold turquoise compass/route ring wrapping its lower half and a small purple compass star on the egg. Dark navy rounded-square tile behind the egg with generous silhouette contrast. Subtle soft 3D game-tool aesthetic, restrained highlights, clean chunky geometry, recognizable at 16 and 32 pixels. Symmetric balanced composition occupying 85 percent of the square, no thin fussy detail, no lettering, no words, no numbers, no official game logo, no existing character. Transparent outside the rounded square tile. Flat front view, square output, standalone icon, no mockup frame or presentation sheet.

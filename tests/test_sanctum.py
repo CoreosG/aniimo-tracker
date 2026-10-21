@@ -22,7 +22,8 @@ class SanctumTests(unittest.TestCase):
 
     def test_portal_icons_without_full_map_interface_do_not_confirm(self):
         import sanctum
-        assets=Path(sanctum.__file__).with_name('assets')
+        from asset_paths import ASSETS
+        assets=ASSETS
         screen=Image.new('RGB',(1920,1080),(45,54,65))
         screen.paste(Image.open(assets/'orange.png'),(1000,300))
         screen.paste(Image.open(assets/'blue.png'),(1124,650))

@@ -81,6 +81,21 @@ class PartyTests(unittest.IsolatedAsyncioTestCase):
         state = await self.state_where(peer, lambda s:s['layout'] == 41)
         self.assertEqual((state['confidence'], state['epoch']), (.8, 2))
 
+    async def test_member_can_start_a_new_run_with_the_same_layout_but_cannot_change_difficulty(self):
+        host,first=await self.request(dict(type='create',username='Host',difficulty='Chaos'))
+        peer,joined=await self.request(dict(type='join',username='Peer',code=first['state']['code']))
+        await host.send(json.dumps(dict(type='update',epoch=1,evidence=dict(layout=32,confidence=.9))))
+        await self.state_where(peer,lambda s:s['layout']==32)
+        await peer.send(json.dumps(dict(type='new_run',epoch=1,difficulty='Hard')))
+        await peer.send(json.dumps(dict(type='new_run',epoch=1,difficulty='Chaos')))
+        fresh=await self.state_where(host,lambda s:s['epoch']==2)
+        self.assertEqual(fresh['difficulty'],'Chaos')
+        self.assertEqual(fresh['started_by'],joined['id'])
+        self.assertIsNone(fresh['layout'])
+        await peer.send(json.dumps(dict(type='update',epoch=2,evidence=dict(layout=32,confidence=.85))))
+        repeated=await self.state_where(host,lambda s:s['layout']==32)
+        self.assertEqual(repeated['epoch'],2)
+
     async def test_reconnect_restores_identity_without_broadcasting_session_secret(self):
         host, first = await self.request(dict(type='create', username='Álice', difficulty='Chaos'))
         peer, joined = await self.request(dict(type='join', username='Peer', code=first['state']['code']))

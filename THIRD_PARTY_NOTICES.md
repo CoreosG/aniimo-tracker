@@ -11,7 +11,7 @@ and visual references provided by the following projects:
 | Aniimo, Pawprint Studio / FunPlus | Small `.png` marker crops in `assets/` | Recognizing the game UI and player marker |
 
 Downloaded map files and any separately installed website mirror are ignored by
-Git and are not hosted in this repository. Run `setup_maps.py` to acquire the
+Git and are not hosted in this repository. Run `src/setup_maps.py` to acquire the
 map files directly from their source sites. This project does not claim
 ownership of them or grant redistribution rights. The optional original
 simulator remains credited to AniimoTools.

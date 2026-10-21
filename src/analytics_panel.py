@@ -136,6 +136,7 @@ class AnalyticsPanel:
         app.enable_wheel_scroll(self.canvas,body)
         heading=ttk.Frame(body);heading.pack(fill='x',pady=(0,5))
         ttk.Label(heading,text='Your runs, in perspective',font=('Segoe UI Semibold',20)).pack(side='left')
+        ttk.Button(heading,text='Balance history / edit',command=app.show_balance_history).pack(side='right',padx=10)
         self.period=tk.StringVar(value='30 days')
         choice=ttk.Combobox(heading,textvariable=self.period,state='readonly',values=('7 days','30 days','All time'),width=11)
         choice.pack(side='right',padx=(10,0));choice.bind('<<ComboboxSelected>>',lambda event:self.refresh())

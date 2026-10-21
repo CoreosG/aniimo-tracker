@@ -23,6 +23,7 @@ class PartyPanel:
         except (OSError, ValueError): profile = {}
         self.name = tk.StringVar(value=profile.get('username', 'Player'))
         self.saved_name = self.name.get()
+        self.warn_unfinished=tk.BooleanVar(value=profile.get('warn_unfinished',True))
         self.mode = tk.StringVar(value=profile.get('mode', 'default'))
         self.address = tk.StringVar(value=profile.get('server', DEFAULT_SERVER))
         self.code = tk.StringVar()
@@ -36,6 +37,7 @@ class PartyPanel:
         self.last_position = None; self.last_context = app.sanctum.session.context_id
         self.done_epoch = 0; self.pending_reset = None; self.last_roster = None
         self.marker_state=None;self.last_locale=None
+        self.run_epoch=None;self.pending_context=None;self.notice_pending=None
         canvas=tk.Canvas(tab,bg='#0d1421',highlightthickness=0)
         scrollbar=ttk.Scrollbar(tab,orient='vertical',command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set);scrollbar.pack(side='right',fill='y');canvas.pack(side='left',fill='both',expand=True)
@@ -49,6 +51,7 @@ class PartyPanel:
         ttk.Label(profile_box,text='Username').grid(row=0,column=0,sticky='w',padx=(0,12))
         ttk.Entry(profile_box,textvariable=self.name,width=26).grid(row=0,column=1,sticky='w')
         ttk.Button(profile_box,text='Save profile',command=self.save_profile).grid(row=0,column=2,padx=12)
+        ttk.Checkbutton(profile_box,text='Warn about unfinished runs',variable=self.warn_unfinished,command=self.save_warning_preference).grid(row=1,column=0,columnspan=3,sticky='w',pady=(12,0))
         server=ttk.LabelFrame(shell,text='Party server',padding=16);server.pack(fill='x',pady=(0,12))
         self.default_radio=ttk.Radiobutton(server,text='Default · eggheist.banneret.app',variable=self.mode,value='default',command=self.server_changed)
         self.default_radio.pack(anchor='w')
@@ -90,7 +93,7 @@ class PartyPanel:
             name = username(self.name.get())
             address = server_url(self.address.get()) if self.mode.get()=='custom' else DEFAULT_SERVER
             temporary=self.path.with_suffix('.tmp')
-            temporary.write_text(json.dumps(dict(username=name, mode=self.mode.get(), server=address)),encoding='utf-8')
+            temporary.write_text(json.dumps(dict(username=name, mode=self.mode.get(), server=address,warn_unfinished=self.warn_unfinished.get())),encoding='utf-8')
             temporary.replace(self.path)
             self.saved_name=name;self.status.set('Profile saved')
             return True
@@ -108,13 +111,22 @@ class PartyPanel:
         except ValueError as exc:self.status.set(str(exc));return
         self.connecting=True;self.status.set('Connecting…');self.controls()
 
+    def save_warning_preference(self):
+        try:
+            try:profile=json.loads(self.path.read_text(encoding='utf-8'))
+            except (OSError,ValueError):profile={}
+            profile['warn_unfinished']=self.warn_unfinished.get()
+            temporary=self.path.with_suffix('.tmp');temporary.write_text(json.dumps(profile),encoding='utf-8');temporary.replace(self.path)
+            self.notice_pending=None;self.app.set_party_notice('');self.app.sanctum.overlay_dirty=True
+        except OSError:self.status.set('Could not save party preferences.')
+
     def controls(self):
         active=self.connecting
         for button in (self.create_button,self.join_button,self.code_entry,self.default_radio,self.custom_radio):
             button.configure(state='disabled' if active else 'normal')
         self.leave_button.configure(state='normal' if active else 'disabled')
         self.copy_button.configure(state='normal' if self.state else 'disabled')
-        self.new_button.configure(state='normal' if self.connected and self.state and self.state['host']==self.identity else 'disabled')
+        self.new_button.configure(state='normal' if self.connected and self.state and self.pending_reset is None else 'disabled')
         host=self.connected and self.state and self.state['host']==self.identity
         self.difficulty_choice.configure(state='readonly' if not active or (host and self.pending_reset is None) else 'disabled')
         self.server_changed()
@@ -126,15 +138,18 @@ class PartyPanel:
     def leave(self):
         self.client.close();self.client=PartyClient();self.state=None;self.identity=None;self.connected=self.connecting=False
         self.observation=None;self.pending_reset=None;self.done_epoch=0
+        self.run_epoch=None;self.pending_context=None;self.notice_pending=None;self.app.set_party_notice('')
         self.room_label.set('No party · up to 3 players');self.map_label.set('Waiting for a shared map')
         self.members.delete(*self.members.get_children());self.status.set('Not in a party');self.controls()
         self.app.sanctum.overlay_dirty=True;self.app.sanctum.paint()
 
-    def new_run(self):
-        if self.connected and self.state and self.identity==self.state['host']:
+    def new_run(self,for_context=None):
+        if self.connected and self.state:
             if self.pending_reset is not None:return
             self.pending_reset=self.state['epoch'];self.observation=None
-            self.client.new_run(self.state['epoch'], self.difficulty.get())
+            self.pending_context=for_context
+            difficulty=self.difficulty.get() if self.identity==self.state['host'] else self.state['difficulty']
+            self.client.new_run(self.state['epoch'], difficulty)
             self.status.set('Starting a new shared run…')
             self.controls()
 
@@ -144,6 +159,7 @@ class PartyPanel:
     def observed_layout(self, layout, reading):
         score=evidence_score(reading)
         if self.connected and self.state and self.pending_reset is None and score>=.75 and self.app.sanctum.session.watching:
+            if self.notice_pending and self.state['layout'] is None:return
             if self.state['epoch']<=self.done_epoch or self.app.sanctum.difficulty.get()!=self.state['difficulty'] or layout not in layouts_for(self.state['difficulty']):return
             self.observation=dict(layout=layout,confidence=score,epoch=self.state['epoch'])
 
@@ -154,14 +170,20 @@ class PartyPanel:
         panel.layout.set('Auto / waiting');panel.map_feedback='Waiting for party map';panel.overlay_dirty=True
         panel.config.update(layout=None,player=None,reading={},map_confirmed=False);panel.write_config();panel.paint()
 
-    def tick(self):
-        panel=self.app.sanctum;now=time.monotonic()
+    def sync_context(self):
+        panel=self.app.sanctum
         context=panel.session.context_id
         if context!=self.last_context:
             previous=self.last_context;self.last_context=context;self.observation=None;self.last_position=None
+            self.app.set_party_notice('');self.notice_pending=None
             if self.state:
-                if previous is not None:self.done_epoch=self.state['epoch']
-                if context is not None and self.connected and self.identity==self.state['host']:self.new_run()
+                if previous is not None and previous!='map-only':self.done_epoch=self.run_epoch or self.state['epoch']
+                self.run_epoch=self.state['epoch'] if context is not None else None
+                if context is not None and context!='map-only' and self.connected and self.done_epoch>=self.state['epoch']:self.new_run(for_context=context)
+
+    def tick(self):
+        panel=self.app.sanctum;now=time.monotonic()
+        self.sync_context();context=panel.session.context_id
         while True:
             try:event=self.client.events.get_nowait()
             except queue.Empty:break
@@ -173,10 +195,17 @@ class PartyPanel:
             old=self.state
             if event['type']=='welcome':self.identity=event['id'];self.connected=True
             self.state=event['state'];self.received_at=now
+            if old is None and context is not None:self.run_epoch=self.state['epoch']
             if self.pending_reset is None or self.state['epoch']>self.pending_reset:self.difficulty.set(self.state['difficulty'])
             if old and self.state['epoch']!=old['epoch']:
+                self.app.set_party_notice('')
+                active=self.app.ledger.active_start()
+                if self.pending_context==context and self.pending_reset is not None:
+                    self.run_epoch=self.state['epoch']
+                elif active and self.run_epoch is not None and self.run_epoch<self.state['epoch'] and self.state.get('started_by',self.state['host'])!=self.identity:
+                    self.notice_pending=(self.state['epoch'],active['id'])
                 self.observation=None;self.last_position=None;self.clear_shared_map()
-                self.pending_reset=None
+                self.pending_reset=None;self.pending_context=None
             if old is None and panel.session.watching and panel.engine:
                 self.observed_layout(panel.engine.layout,panel.last_reading)
             self.room_label.set(f'{self.state["code"]} · {len(self.state["members"])}/3')
@@ -188,6 +217,12 @@ class PartyPanel:
             if self.app.tabs.select()==str(self.app.sanctum_tab):panel.paint()
         if not self.state:return
         state=self.state
+        if self.notice_pending and state['layout'] is not None:
+            active=self.app.ledger.active_start()
+            if self.warn_unfinished.get() and active and self.notice_pending==(state['epoch'],active['id']) and not panel.session.standalone:
+                self.app.set_party_notice('New party run detected · map updated. Your previous run is unfinished.')
+                panel.overlay_dirty=True
+            self.notice_pending=None
         self.refresh_members()
         marker_state=[(p['name'],p['live']) for p in self.markers()]
         if marker_state!=self.marker_state:

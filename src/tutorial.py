@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image,ImageTk
 
-ASSETS=Path(__file__).with_name('assets')/'tutorial'
+from asset_paths import BUNDLED
+ASSETS=BUNDLED/'tutorial'
 
 
 def tutorial_steps(shortcuts, portuguese=False):
@@ -17,7 +18,7 @@ def tutorial_steps(shortcuts, portuguese=False):
             ('2 · Capture o saque',f'Na tela de resultado, pressione {capture} novamente. O aplicativo registra o valor do saque desta partida.\n\nEste valor não é dinheiro recebido: itens podem ficar no inventário ou ser vendidos por outro preço. O saldo real será atualizado na próxima captura da mochila.','loot.png',(.025,.30,.28,.45)),
             ('3 · Capture os pontos e salve',f'Na tela de pontos, pressione {capture}. Confira o ganho ou a perda no aplicativo ou na barra da sobreposição. Depois, pressione {save} para salvar.\n\nSó os pontos são obrigatórios. O saque é opcional. O bônus diário já está incluído no valor lido. Uma derrota deve aparecer com pontos negativos.','points.png',(.72,.55,.93,.62)),
             ('4 · Mapa durante a partida',f'Escolha a dificuldade em Mapa e rotas. Durante uma partida, abra o mapa do jogo com {map_key} para reconhecer o layout. A barra mostra a confirmação; o mapa da sobreposição fica oculto enquanto o mapa do jogo está aberto.\n\nUse {overlay} para alternar a sobreposição. Use Mover sobreposição para reposicioná-la e bloquear novamente. Também é possível iniciar só o rastreador de mapa.',None,None),
-            ('5 · Jogue em grupo', 'Na aba Grupo, salve seu nome e crie um grupo ou entre com o código de um amigo. O limite é de três pessoas. O anfitrião escolhe a dificuldade e inicia a próxima navegação compartilhada.\n\nCada jogador precisa iniciar sua partida ou seu rastreador. O melhor reconhecimento é compartilhado, junto das posições. Capturas e dados financeiros ficam no seu PC.',None,None),
+            ('5 · Jogue em grupo', 'Na aba Grupo, salve seu nome e crie um grupo ou entre com o código de um amigo. O limite é de três pessoas. O anfitrião escolhe a dificuldade. Qualquer membro pode iniciar a próxima navegação compartilhada.\n\nCada jogador precisa iniciar sua partida ou seu rastreador. O melhor reconhecimento é compartilhado, junto das posições. Capturas e dados financeiros ficam no seu PC.',None,None),
             ('Tudo pronto', 'Você pode corrigir leituras antes de salvar e editar partidas pelo histórico. Ingressos comprados ou gratuitos ficam no cartão de ingressos. Análise mostra os gráficos.\n\nTodos os atalhos podem ser alterados em Configurações. Abra este guia novamente pelo botão ? no topo. As imagens deste guia são exemplos anonimizados.',None,None)]
     return [
         ('Welcome to Eggheist', 'One capture shortcut recognizes the screen automatically. This guide shows when to capture and what gets recorded.\n\nFirst, use Correct stats to enter your own points, rank, tickets and balance. In Map & routes, download the maps once using the in-app button.',None,None),
@@ -25,7 +26,7 @@ def tutorial_steps(shortcuts, portuguese=False):
         ('2 · Capture the loot result',f'On the loot result screen, press {capture} again. The app records the value of the loot from this run.\n\nThis is not cash received: you may keep items or sell them for a different price. Your next Inventory capture updates the actual wallet checkpoint.','loot.png',(.025,.30,.28,.45)),
         ('3 · Capture points, then save',f'On the points result screen, press {capture}. Review the gain or loss in the app or the overlay bar. Then press {save} to save.\n\nOnly points are required; loot is optional. The daily bonus is already included in the reading. A failed run should have negative points.','points.png',(.72,.55,.93,.62)),
         ('4 · Navigate during a run',f'Choose your difficulty in Map & routes. During a run, open the game map with {map_key} to identify the layout. The compact bar confirms recognition; the overlay map hides while the game map is open.\n\nPress {overlay} to toggle the overlay. Use Move overlay to reposition it, then lock it again. You can also start map-only tracking.',None,None),
-        ('5 · Play with a party', 'In Party, save your username and create a party or join a friend’s code. Up to three players can join. The host sets the difficulty and starts the next shared navigation session.\n\nEach player starts their own run or map tracker. The strongest map recognition and player positions are shared. Screenshots and financial data stay on your PC.',None,None),
+        ('5 · Play with a party', 'In Party, save your username and create a party or join a friend’s code. Up to three players can join. The host sets the difficulty. Any member can start the next shared navigation session.\n\nEach player starts their own run or map tracker. The strongest map recognition and player positions are shared. Screenshots and financial data stay on your PC.',None,None),
         ('You’re ready', 'Correct readings before saving, or edit saved runs in Run history. Buy tickets and Free tickets are on the ticket card. Analytics contains the graphs.\n\nAll shortcuts can be changed in Settings. Reopen this guide anytime with the ? button at the top. Tutorial images are anonymized examples.',None,None)]
 
 

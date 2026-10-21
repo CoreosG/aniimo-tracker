@@ -74,3 +74,32 @@ class AnalyticsTests(unittest.TestCase):
                              ('2026-10-19',None,1,140000,0,140,1,3,1))
             self.assertEqual(ledger.summary(),before,'Analytics must be read-only')
 
+class CheckpointEditingTests(unittest.TestCase):
+    def test_editing_the_latest_checkpoint_recalculates_cash_and_rejects_invalid_amounts(self):
+        from tracker_core import Ledger
+        with tempfile.TemporaryDirectory() as folder:
+            ledger=Ledger(Path(folder)/'runs.db')
+            checkpoint=ledger.correct_stats(coins=70000000)
+            ledger.spend(120000)
+            ledger.update_balance_checkpoint(checkpoint,7000000)
+            self.assertEqual(ledger.summary()['coins'],6880000)
+            for amount in (-1,1.5,True):
+                with self.assertRaises(ValueError):ledger.update_balance_checkpoint(checkpoint,amount)
+            self.assertEqual(ledger.summary()['coins'],6880000)
+
+    def test_editing_an_old_wallet_checkpoint_removes_the_outlier_without_changing_current_stats(self):
+        from tracker_core import Ledger
+        from analytics import build_report
+        with tempfile.TemporaryDirectory() as folder:
+            ledger=Ledger(Path(folder)/'runs.db')
+            checkpoint=ledger.correct_stats(coins=76540000)
+            ledger.correct_stats(coins=10500000)
+            active=ledger.start_run();ledger.save_draft({'points':'190'})
+            baseline=ledger.summary();draft=ledger.draft();start=ledger.active_start()
+            ledger.update_balance_checkpoint(checkpoint,7654000)
+            self.assertEqual(len(ledger.corrections()),2)
+            self.assertEqual(next(r for r in ledger.corrections() if r['id']==checkpoint)['coins'],7654000)
+            self.assertNotIn(76540000,[p['coins'] for p in build_report(ledger,days=None)['wallet']])
+            self.assertEqual(ledger.summary(),baseline)
+            self.assertEqual(ledger.active_start(),start)
+            self.assertEqual(ledger.draft(),draft)

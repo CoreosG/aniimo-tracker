@@ -1,7 +1,8 @@
 **
-!party_server.py
-!party_protocol.py
-!map_catalog.py
+!src/
+!src/party_server.py
+!src/party_protocol.py
+!src/map_catalog.py
 !server/
 !server/Dockerfile
 !server/requirements.txt

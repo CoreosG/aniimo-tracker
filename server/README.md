@@ -42,7 +42,7 @@ Requires Python 3.11 or newer:
 ```sh
 python -m venv .venv
 .venv/bin/pip install -r server/requirements.txt
-.venv/bin/python party_server.py --host 127.0.0.1 --port 8787
+.venv/bin/python src/party_server.py --host 127.0.0.1 --port 8787
 ```
 
 Use your service manager to supervise it. `--host 0.0.0.0` with `ws://` can be
@@ -87,10 +87,7 @@ proxy and internet path separately before increasing production limits.
 
 ## Shared-run rules
 
-The creator is the host. The host can press **New shared run**; starting a new
-tracked/map-only run as the host also resets party navigation. Other members
-do not reset everyone when they start or save their own run. After finishing a
-run, a member waits for the host's next shared run before adopting another map.
+The creator is the host and controls difficulty. Any member can press **New shared run**. Starting the next tracked run announces a shared session only after completing the current one; finishing an older ledger run and catching up does not reset newer navigation. New sessions clear positions and layout, even if the next layout repeats. A confirmed map may show an optional unfinished-run notice. Notices never modify saved runs.
 
 A single unambiguous full-map result supplies local layout evidence. Its score
 uses the weaker portal match, reduced for covered portals. A strictly higher
