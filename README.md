@@ -69,6 +69,7 @@ The break-even card shows one sales target per run, with a colored ticket/key/ge
 <details>
 <summary><b>See the new analytics and budget</b></summary>
 <p>These previews use invented demo data.</p>
+<img src="assets/previews/goal.png" width="900" alt="Goal estimate with labeled rank progress and short assumptions">
 <img src="assets/previews/analytics.png" width="900" alt="Analytics with estimated loot per hour, budget comparison and history charts">
 <img src="assets/previews/budget.png" width="900" alt="Compact break-even target with ticket, key and gear costs">
 </details>

@@ -32,9 +32,9 @@ def display_day(iso):
 
 class Localizer:
     def __init__(self,root,language='en'):
-        self.root=root;self.widgets={};self.variables={};self.texts={};self.traces=[];self.last_language=None
+        self.root=root;self.widgets={};self.variables={};self.texts={};self.traces={};self.destroy_bindings={};self.last_language=None
         set_language(language)
-        root.bind_all('<Map>',self._mapped,add='+')
+        self.map_binding=root.bind_all('<Map>',self._mapped,add='+')
 
     def _mapped(self,event):
         self.attach(event.widget)
@@ -42,6 +42,7 @@ class Localizer:
     def attach(self,widget):
         if widget in self.widgets:return
         self.widgets[widget]={}
+        self.destroy_bindings[widget]=widget.bind('<Destroy>',lambda event:self._detach(event.widget,destroying=True),add='+')
         if isinstance(widget,(ttk.Label,ttk.Button,ttk.Checkbutton,ttk.Radiobutton,ttk.LabelFrame,tk.Label,tk.Button,tk.Checkbutton)):
             source=str(widget.cget('textvariable')) if 'textvariable' in widget.keys() else ''
             if source:self._mirror(widget,source)
@@ -60,20 +61,40 @@ class Localizer:
             finally:busy[0]=False
         command=self.root.register(update)
         self.root.tk.call('trace','add','variable',source,'write',command)
-        self.traces.append((source,command))
+        choose_command=None
         if editable:
             def choose(*args):
                 if busy[0]:return
                 raw=self.widgets[widget].get('values',('',()))[0]
                 reverse={tr(value):value for value in raw}
                 self.root.setvar(source,reverse.get(display.get(),display.get()))
-            display.trace_add('write',choose)
+            choose_command=display.trace_add('write',choose)
+        self.traces[widget]=(source,command,choose_command)
         self.variables[widget]=(display,update)
         widget.configure(textvariable=display)
         update()
 
     def register_text(self,widget,raw,portuguese=None):
         self.texts[widget]=(raw,portuguese)
+
+    def _detach(self,widget,destroying=False):
+        binding=self.destroy_bindings.pop(widget,None)
+        if binding and not destroying:
+            try:widget.unbind('<Destroy>',binding)
+            except tk.TclError:pass
+        trace=self.traces.pop(widget,None)
+        variable=self.variables.pop(widget,None)
+        if trace:
+            source,command,choose_command=trace
+            try:self.root.tk.call('trace','remove','variable',source,'write',command)
+            except tk.TclError:pass
+            try:self.root.deletecommand(command)
+            except tk.TclError:pass
+            if variable and choose_command:
+                try:variable[0].trace_remove('write',choose_command)
+                except tk.TclError:pass
+        self.widgets.pop(widget,None)
+        self.texts.pop(widget,None)
 
     def _option(self,widget,key,current,write):
         previous=self.widgets[widget].get(key)
@@ -88,6 +109,9 @@ class Localizer:
         if 'text' in w.keys() and w not in self.variables:
             self._option(w,'text',str(w.cget('text')),lambda value:w.configure(text=value))
         if isinstance(w,ttk.Treeview):
+            live=set(w.get_children())
+            for key in list(self.widgets[w]):
+                if key.startswith('cell:') and key.split(':',2)[1] not in live:self.widgets[w].pop(key)
             for column in w['columns']:
                 self._option(w,'heading:'+column,w.heading(column,'text'),lambda value,c=column:w.heading(c,text=value))
             for item in w.get_children():
@@ -115,11 +139,11 @@ class Localizer:
             self.attach(root)
             for child in root.winfo_children():self.refresh(child)
             return
+        # Cleanup is language-independent; English still creates image dialogs.
+        for w in list(self.widgets):
+            if not w.winfo_exists():self._detach(w)
         if _language=='en' and self.last_language=='en':return
         for w in list(self.widgets):
-            if not w.winfo_exists():
-                self.widgets.pop(w,None);self.variables.pop(w,None);self.texts.pop(w,None)
-                continue
             self._refresh_widget(w)
         for display,update in self.variables.values():update()
         for w,(raw,portuguese) in list(self.texts.items()):
@@ -130,6 +154,5 @@ class Localizer:
         self.last_language=_language
 
     def close(self):
-        for source,command in self.traces:
-            try:self.root.tk.call('trace','remove','variable',source,'write',command)
-            except tk.TclError:pass
+        self.root._unbind(('bind','all','<Map>'),self.map_binding)
+        for widget in list(self.widgets):self._detach(widget)

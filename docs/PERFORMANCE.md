@@ -16,6 +16,32 @@ at **222 ms before** versus **37 ms after** reusing its detected area. The detec
 position stayed the same. Timing depends on screen resolution, minimap content,
 hardware and whether recovery is needed; initial detection is still more expensive.
 
+## Retention checks in the corrected 0.3.0 build
+
+The audit found and fixed two sources of retained memory: localization references
+kept closed screenshot dialogs alive, and two map libraries could retain every
+visited layout. Dialog destruction now removes its localization references and
+Tcl callbacks immediately. Each map library retains only its two most recently
+used models, and each model owns a bounded 32-entry route cache; global route
+keys no longer keep evicted models alive.
+
+Disposable stress checks on the development PC:
+
+| Scenario | Observation |
+| --- | --- |
+| Open/close 100 screenshot dialogs with a synthetic 1920×1080 image | 73.95 → 74.52 MB RSS; Tk image and callback counts stayed constant |
+| Show the overlay 501 times | 76.5 → 76.6 MB RSS; image and canvas item counts stayed constant |
+| Browse all 21 models in both libraries, twice, without forced GC | 152.6 → 153.1 MB after each sweep; four cached models total |
+
+The same all-layout sweep retained about 1,063 MB before the cache fix. Normal
+confirmed-map tracking keeps its active model warm. Revisiting an evicted layout
+requires loading it again. These are targeted stress checks, not a guarantee
+against every possible memory leak or an overnight soak test.
+
+An unknown capture that compares all seven layouts can take a few extra seconds
+because evicted models must be loaded again. The full-map portal detector and
+normal tracking of an already confirmed layout do not use that all-layout scan.
+
 ## Controls that help
 
 - **Map & routes → Overlay → Position updates → Low CPU (1.5s)** updates position

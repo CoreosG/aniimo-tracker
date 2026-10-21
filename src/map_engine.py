@@ -18,8 +18,11 @@ class MapLibrary:
         self.models={};self.difficulty=difficulty
 
     def model(self,layout):
-        if layout not in self.models:self.models[layout]=MapEngine(layout)
-        return self.models[layout]
+        model=self.models.pop(layout,None)
+        if model is None:model=MapEngine(layout)
+        self.models[layout]=model
+        while len(self.models)>2:self.models.pop(next(iter(self.models)))
+        return model
 
     def identify(self,frame,region=None):
         if not (SIMULATOR/f'layout-{layouts_for(self.difficulty)[0]}.json').exists():return None
@@ -56,6 +59,9 @@ class MapEngine:
         self._minimap_area=None
         self._minimap_frame_size=None
         self._minimap_misses=0
+        # Keep route memoization with its map, so evicting a floor plan does not
+        # leave it reachable through a process-wide cache of bound-method calls.
+        self._route_results={}
 
     @staticmethod
     def _floor(image,threshold):
@@ -89,8 +95,15 @@ class MapEngine:
         q=qa+np.array([re*x-im*y,im*x+re*y])
         return [float(q[0]/self.image.width*100),float(q[1]/self.image.height*100)]
 
-    @lru_cache(maxsize=96)
     def route(self,entrance=0,keys=2,goal='keys',eggs=1,rooms=1,exit='nearest'):
+        key=(entrance,keys,goal,eggs,rooms,exit)
+        result=self._route_results.pop(key,None)
+        if result is None:result=self._route(entrance,keys,goal,eggs,rooms,exit)
+        self._route_results[key]=result
+        while len(self._route_results)>32:self._route_results.pop(next(iter(self._route_results)))
+        return result
+
+    def _route(self,entrance,keys,goal,eggs,rooms,exit):
         if goal not in ('keys','eggs','both','none','rich','trials'):raise ValueError('Unknown route goal')
         if exit not in ('nearest','orange','blue'):raise ValueError('Unknown exit')
         pts=self.routes['pts'];dist=self.routes['D']

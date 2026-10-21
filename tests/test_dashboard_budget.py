@@ -6,6 +6,17 @@ from app import App
 
 
 class DashboardBudgetTests(unittest.TestCase):
+    def test_goal_labels_progress_and_keeps_assumptions_short(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                app.ledger.configure(rank=500,rank_points=0,target=1000)
+                app.refresh()
+                self.assertEqual(app.goal_progress_text.get(),'Rank 500 / 1,000 · 50.0%')
+                self.assertLessEqual(len(app.goal_details_text.get().splitlines()),3)
+                self.assertIn('Estimated playtime:',app.playtime_text.get())
+            finally:app.close()
+
     def test_budget_is_readable_and_opens_its_settings_without_changing_the_ledger(self):
         with tempfile.TemporaryDirectory() as directory, patch('sanctum_panel.game_is_foreground', return_value=False):
             app = App(directory, hotkeys=False)

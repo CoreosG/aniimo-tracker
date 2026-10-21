@@ -2,6 +2,11 @@
 
 ## 0.3.0
 
+The release download was rebuilt with a matching-background forecast panel,
+labeled rank progress and three-line assumptions. This corrected build also
+releases closed screenshot dialogs and caps map/route caches to avoid retaining
+all visited maps. Download 0.3.0 again if you obtained the initial build.
+
 - Replace the long budget paragraph with a per-run sales target, proportional
   ticket/key/gear breakdown, collapsed assumptions and a budget settings shortcut.
 - Simplify goal/playtime summaries and reflow overview stats on narrower windows.

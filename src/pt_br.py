@@ -1,5 +1,6 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Assumes daily ticket purchases. Daily time includes days off.|Pressupõe compras diárias de ingressos. O tempo diário inclui dias sem jogar.
 Selected display is disconnected; choose a display in Settings.|O monitor selecionado foi desconectado; escolha outro nas Configurações.
 Today|Hoje
 90 days|90 dias

@@ -30,3 +30,9 @@ priority; resolution changes and repeated misses trigger discovery again.
 UI preview rendering is deferred while hidden and refreshed on return. Overlay
 slider previews are coalesced separately from persistence, and ephemeral
 positions do not cause a configuration-file write on every frame.
+
+Map libraries retain two recently used models each. Route results live in each
+model's bounded cache, so global cache keys cannot prolong an evicted model's
+lifetime. Active callers may keep their current model even after library eviction.
+Localization removes per-widget references, variable traces and Tcl commands on
+widget destruction; closed image canvases must not remain reachable through it.

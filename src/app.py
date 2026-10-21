@@ -184,7 +184,10 @@ class App(tk.Tk):
         s.configure('TSpinbox',fieldbackground='#23344c',foreground=TEXT,padding=6)
         s.configure('Workspace.TNotebook',bordercolor=BG,lightcolor=BG,darkcolor=BG)
         s.configure('Goal.Horizontal.TProgressbar', background=ACCENT, troughcolor='#263a53',
-                    borderwidth=0, lightcolor=ACCENT, darkcolor=ACCENT)
+                    borderwidth=0, lightcolor=ACCENT, darkcolor=ACCENT,bordercolor=PANEL,thickness=6)
+        s.layout('Goal.Horizontal.TProgressbar',[
+            ('Horizontal.Progressbar.trough',{'sticky':'nswe','children':[
+                ('Horizontal.Progressbar.pbar',{'side':'left','sticky':'ns'})]})])
         s.configure('TButton',background='#24364c')
         s.map('TButton',background=[('active','#314a68')])
         for name in ('TEntry','TCombobox','TSpinbox'):
@@ -296,17 +299,21 @@ class App(tk.Tk):
                   font=('Segoe UI Semibold',9)).pack(anchor='w',pady=(0,5))
         ttk.Label(self.goal_summary, textvariable=self.forecast_text, foreground=ACCENT,
                   style='Panel.TLabel',font=('Segoe UI Semibold', 11), wraplength=900).pack(anchor='w')
+        self.goal_progress_text=tk.StringVar()
+        ttk.Label(self.goal_summary,textvariable=self.goal_progress_text,style='Panel.TLabel',foreground=MUTED,font=('Segoe UI',9)).pack(anchor='w',pady=(7,3))
         self.goal_progress=ttk.Progressbar(self.goal_summary,style='Goal.Horizontal.TProgressbar',maximum=100)
-        self.goal_progress.pack(fill='x',pady=(8,7))
+        self.goal_progress.pack(fill='x',pady=(0,9))
         self.playtime_text = tk.StringVar()
         self.goal_time_label=ttk.Label(self.goal_summary, textvariable=self.playtime_text,
                   style='Panel.TLabel',wraplength=900)
         self.goal_time_label.pack(anchor='w')
         self.goal_details=self.disclosure(self.goal_summary,'Estimate details')
+        self.goal_details.configure(style='Panel.TFrame')
         self.goal_details_text=tk.StringVar()
         self.goal_details_label=ttk.Label(self.goal_details,textvariable=self.goal_details_text,
                   style='Panel.TLabel',foreground=MUTED,wraplength=700,justify='left')
         self.goal_details_label.pack(anchor='w')
+        self.goal_details.bind('<Configure>',lambda event:self.goal_details_label.configure(wraplength=max(240,event.width)))
         self.goal_summary.bind('<Configure>',lambda event:[child.configure(wraplength=max(260,event.width-28))
             for child in self.goal_summary.winfo_children() if isinstance(child,ttk.Label)])
         self.budget_text = tk.StringVar()
@@ -607,7 +614,7 @@ Run loot value is not cash income. You can keep items, sell them later, or recei
 
 Forecasts assume you buy the configured daily tickets and use your stockpile. They assume you can afford the purchases. Logged point changes are used exactly: 400 adds 400 and -140 loses 140. Once you have logged successful Chaos runs, the forecast uses their actual average, including daily bonuses, and adds no further daily bonus. Failed runs still change rank progress and ticket stock, but are excluded from average points per successful run. Before any successful Chaos runs, expected normal and first-daily awards are used. Early averages can be noisy. Non-ticket runs do not train the Chaos average.
 Failed run is beside the Points field. Check it and enter points lost as a positive amount (140), or enter -140 directly. Enter 0 with Failed run checked for a zero-point failure. Save run records the result and ticket use once. Run history marks failed results and lets you edit their loss or outcome. A failure never fabricates a loot value or credits cash; optional loot remains separate. Already included in current stats and newer authoritative corrections still take priority.
-Overview estimates playtime as remaining runs times 12 minutes by default: a 15-minute run ending with 3 minutes left. Change Minutes in each run and optional Extra minutes per run in Settings to account for queues, buying or selling. Estimate details also shows the same run count at the full 15-minute timer. Daily time is an average over every calendar day until the deadline; skipped days mean more time on the days you play. Estimates update after saved/edited runs and stat corrections; they are not measured playtime.
+Overview estimates playtime as remaining runs times 12 minutes by default: a 15-minute run ending with 3 minutes left. Change Minutes in each run and optional Extra minutes per run in Settings to account for queues, buying or selling. Daily time is an average over every calendar day until the deadline; skipped days mean more time on the days you play. Estimates update after saved/edited runs and stat corrections; they are not measured playtime.
 
 RESEARCH · CHECKED OCTOBER 18, 2026
 
@@ -652,30 +659,28 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             line = f"Below target at this pace · {state['remaining']:,} points left · adjust goal settings"
         self.forecast_text.set(line)
         goal_points=max(1,s['target']*s['points_per_rank'])
-        self.goal_progress.configure(value=max(0,min(100,100*(1-state['remaining']/goal_points))))
+        progress=max(0,min(100,100*(1-state['remaining']/goal_points)))
+        self.goal_progress.configure(value=progress)
+        self.goal_progress_text.set(f"Rank {state['rank']:,} / {s['target']:,} · {progress:.1f}%")
         if not state['remaining']:
             time_line = 'Goal reached · 0 min of playtime remaining'
         elif plan['play_minutes'] is None:
             time_line = 'Playtime estimate unavailable · successful-run points per run must be positive'
         else:
-            time_line = f"Estimated playtime: {self.duration(plan['session_minutes'])} left"
+            time_line = f"Estimated playtime: {self.duration(plan['session_minutes'])} total"
             if plan['daily_session_minutes'] is not None:
                 time_line += f" · ≈ {self.duration(plan['daily_session_minutes'])}/calendar day"
             else:
                 time_line += ' · deadline has passed'
-        time_line += f" · {plan['days']} days left"
         self.playtime_text.set(time_line)
         runs = self.ledger.runs()
         budget=break_even(s)
         self.budget_panel.update_budget(s,budget)
         self.budget_text.set(self.budget_panel.details.get())
         self.goal_details_text.set(
-            f"Deadline: {s['deadline']} · {state['rank_points']}/{s['points_per_rank']} points into current rank\n"
-            f"{state['normal']:.1f} avg points/successful run · {plan['margin']:,} ticket margin\n"
-            f"{s['run_minutes']} min/run + {s['extra_minutes']} extra min/run · daily time averages every calendar day.\n"+
-            (f"Full 15-minute timer: {self.duration(plan['full_run_minutes'])} in runs.\n"
-             if plan['full_run_minutes'] is not None else '')+
-            'Assumes daily ticket purchases are affordable. Skipped play days require more time on other days.')
+            f"Deadline: {s['deadline']} · {plan['days']} days left · {plan['margin']:+,} ticket margin\n"
+            f"{state['normal']:.1f} pts/success · {s['run_minutes']} min/run + {s['extra_minutes']} extra min/run\n"
+            'Assumes daily ticket purchases. Daily time includes days off.')
         self.tree.delete(*self.tree.get_children())
         for run in runs:
             self.tree.insert('', 'end', iid=str(run['id']), values=(run['day'], run['points'],
