@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-10-21
+
+### Added
+
+- Party navigation guidance with direct Start map tracker / Resume map buttons,
+  map-pack setup guidance and local-position requirements in English and PT-BR.
+
+### Fixed
+
+- Keep the selected page when processing shortcut captures instead of switching
+  automatically to Overview. Verify foreground focus and minimized state across
+  result captures, inventory starts and overlay refreshes.
+- Say Map tracking paused in the persistent overlay instead of Ready, and
+  suppress waiting-for-map messages while navigation is paused.
+
 ## [0.3.6] - 2026-10-21
 
 ### Fixed
@@ -137,7 +152,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.3...v0.3.4

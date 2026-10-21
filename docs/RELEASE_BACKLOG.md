@@ -1,28 +1,21 @@
-# Next-version feedback
+# Release follow-ups
 
-Collected during live testing on 2026-10-21. These are pending changes, not
-released fixes.
+Last updated 2026-10-21.
 
-- **Capture stays in the background.** The user reports that the main tracker
-  window appears on the second monitor after using the capture shortcut.
-  Investigate capture completion, automatic tab changes and window restoration.
-  A shortcut must preserve the game's foreground focus and the tracker's
-  minimized/background state on both single- and multi-monitor setups. Keep
-  button-initiated capture restoration separate. Report capture progress in the
-  overlay without bringing up the main window.
-- **Explain paused map tracking.** An active run with paused navigation currently
-  shows the misleading overlay combination "Ready / Run active / waiting for
-  map." Show that map tracking is paused and how to resume it. Avoid suggesting
-  that recognition is running while it is paused. Keep EN/PT-BR consistent.
-- **Explain party prerequisites.** Live test confirmed that the detected Chaos
-  layout reached the shared party. The teammate's map and position both appeared
-  after resuming map tracking. Make this dependency visible in Party controls;
-  preserve the user's explicit pause rather than silently restarting navigation.
-- **Investigate the earlier missing-overlay session if it recurs.** Restarting
-  restored visibility. The original stall was not reproduced or attributed to
-  an exception; do not describe it as fixed by the status-wording release.
+## Pending investigation
 
-Before release, verify shortcut capture from inventory and result screens with
-the tracker minimized and behind the game; confirm game focus is retained and
-the compact overlay receives capture/save feedback. Verify party layout and
-position exchange after explicitly resuming navigation.
+The earlier missing-overlay session recovered after restarting. Its original
+stall was not reproduced or attributed to an exception. If it recurs, capture
+bounded local diagnostics; do not describe it as fixed by the status updates.
+
+## Addressed in 0.3.7
+
+- Captured results keep the selected page. Native Windows focus and minimized
+  state checks cover result capture, inventory starts and overlay refreshes;
+  button-initiated window restoration is tested separately.
+- The persistent overlay explicitly identifies paused map tracking rather than
+  saying Ready or waiting for map.
+- The Party page exposes Start / Resume map tracking and explains that local
+  minimap readings are required for positions. A real isolated relay test covers
+  shared layout adoption and bidirectional positions after resuming, without
+  altering the run ledger. Explicit pauses remain respected.

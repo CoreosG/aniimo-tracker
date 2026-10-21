@@ -946,7 +946,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                     self.status.set('Your run is already active. Capture loot and points when it finishes.')
                     continue
                 self.attach(kind,path,full_text=text if kind in ('money','points') else None)
-                if kind in ('money','points'):self.tabs.select(0)
             elif kind=='map':
                 panel=self.sanctum
                 if panel.session.context_id is not None:panel.resume_watch()
@@ -1180,7 +1179,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         active=bool(self.ledger.active_start())
         state='Run active' if active else 'No active run'
         if active and self.party_notice.get():state+=' · previous run unfinished'
-        if active and not self.sanctum.session.map_confirmed and not self.sanctum.outdoors:state+=' · waiting for map'
+        if active and self.sanctum.session.watching and not self.sanctum.session.map_confirmed and not self.sanctum.outdoors:state+=' · waiting for map'
         values=[]
         for name,kind,parser in [('Loot','money',parse_amount),('Pts','points',parse_points)]:
             raw=self.fields[kind].get().strip()

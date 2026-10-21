@@ -211,6 +211,11 @@ with the observed balance. **Loot or points results** exit map-only mode and ope
 result entry; a starting balance is optional. Captures queued in that same burst
 stay together through an automatic start.
 
+Shortcut captures keep the current page and leave the tracker in the background
+or minimized. Read capture progress in the overlay, then open Overview when you
+want to review values. Clicking the Capture button inside the tracker still
+briefly hides and restores its window.
+
 You can also type points and choose **Save run** directly from map-only mode.
 After saving, enter or capture the next result and save again: no start button or
 balance is required for points-only logging. Saving consumes a ticket when
@@ -223,6 +228,12 @@ Open **Party**, save a username, and create a party or enter a teammate's
 **Custom / self-hosted server** to use another instance. Everyone in a party
 must use the same server. Joining does not start a tracked run or alter stats;
 start your run or map-only tracking to display party navigation.
+
+The Party page explains when local navigation is stopped or paused and provides
+**Start map tracker** or **Resume map** directly. Joining a party preserves an
+explicit pause. A shared layout identifies the map; each player's own minimap
+must still be read before their position appears for teammates. The persistent
+overlay says **Map tracking paused** when navigation is paused.
 
 The first confident portal or repeated minimap identification is shared. A strictly higher
 evidence score replaces it for everyone. Each player continues recognizing their

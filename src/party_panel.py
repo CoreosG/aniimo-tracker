@@ -75,6 +75,10 @@ class PartyPanel:
         self.members.pack(fill='x',pady=8)
         for color in ('#3df5ff','#ff82cb','#a6fa65'): self.members.tag_configure(color,foreground=color)
         ttk.Label(room,textvariable=self.map_label,wraplength=650).pack(anchor='w',pady=6)
+        self.navigation_frame=ttk.Frame(room)
+        self.navigation_note=tk.StringVar()
+        ttk.Label(self.navigation_frame,textvariable=self.navigation_note,wraplength=650,style='Muted.TLabel').pack(anchor='w')
+        self.navigation_button=ttk.Button(self.navigation_frame,command=self.start_navigation)
         difficulty_row=ttk.Frame(room);difficulty_row.pack(fill='x',pady=6)
         ttk.Label(difficulty_row,text='Party difficulty').pack(side='left',padx=(0,12))
         self.difficulty_choice=ttk.Combobox(difficulty_row,state='readonly',textvariable=self.difficulty,values=DIFFICULTIES,width=16)
@@ -130,10 +134,44 @@ class PartyPanel:
         host=self.connected and self.state and self.state['host']==self.identity
         self.difficulty_choice.configure(state='readonly' if not active or (host and self.pending_reset is None) else 'disabled')
         self.server_changed()
+        self.update_navigation()
 
     def copy_code(self):
         if self.state:
             self.app.clipboard_clear();self.app.clipboard_append(self.state['code']);self.status.set('Party code copied')
+
+    def update_navigation(self):
+        if not self.connected or not self.state:
+            self.navigation_frame.pack_forget();return
+        panel=self.app.sanctum
+        action=None
+        if not panel.assets_ready:
+            note='Download the map pack to use party maps and positions.'
+            action='Open map setup'
+        elif self.pending_reset is not None:
+            note='Waiting for the new shared run…'
+        elif self.state['epoch']<=self.done_epoch:
+            note='This shared run has ended. Choose New shared run for the next dungeon.'
+        elif panel.session.context_id is None:
+            note='Start map tracking to use the party map and share your position.'
+            action='Start map tracker'
+        elif not panel.session.watching:
+            note='Map tracking is paused. Resume to use the party map and share your position.'
+            action='Resume map'
+        else:
+            note='Map tracking active · positions require a local minimap reading.'
+        if self.navigation_note.get()!=note:self.navigation_note.set(note)
+        if not self.navigation_frame.winfo_manager():self.navigation_frame.pack(fill='x',pady=(4,8),before=self.difficulty_choice.master)
+        if action:
+            if self.navigation_button.cget('text')!=tr(action):self.navigation_button.configure(text=action)
+            if not self.navigation_button.winfo_manager():self.navigation_button.pack(anchor='w',pady=(6,0))
+        else:self.navigation_button.pack_forget()
+
+    def start_navigation(self):
+        panel=self.app.sanctum
+        if not panel.assets_ready:self.app.tabs.select(self.app.sanctum_tab)
+        elif self.connected and not panel.session.watching:panel.watch_action()
+        self.update_navigation()
 
     def leave(self):
         self.client.close();self.client=PartyClient();self.state=None;self.identity=None;self.connected=self.connecting=False
@@ -215,6 +253,7 @@ class PartyPanel:
             self.refresh_members()
             panel.overlay_dirty=True;self.controls()
             if self.app.tabs.select()==str(self.app.sanctum_tab):panel.paint()
+        self.update_navigation()
         if not self.state:return
         state=self.state
         if self.notice_pending and state['layout'] is not None:

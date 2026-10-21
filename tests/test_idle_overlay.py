@@ -5,6 +5,29 @@ from app import App
 
 
 class IdleOverlayTests(unittest.TestCase):
+    def test_paused_run_says_tracking_is_paused_instead_of_ready_or_waiting(self):
+        with tempfile.TemporaryDirectory() as directory, patch('sanctum_panel.game_is_foreground',return_value=True):
+            app=App(directory,hotkeys=False)
+            try:
+                app.ledger.configure(capture_target='monitor')
+                panel=app.sanctum;panel.always_status.set(True)
+                app.begin_run(without_balance=True);panel.end_watch();panel.tick()
+                self.assertFalse(panel.session.watching)
+                self.assertTrue(panel.overlay.visible)
+                shown=' '.join(panel.overlay.canvas.itemcget(i,'text') for i in panel.overlay.canvas.find_all() if panel.overlay.canvas.type(i)=='text')
+                self.assertIn('Map tracking paused',shown)
+                self.assertIn('Run active',shown)
+                self.assertNotIn('Ready',shown)
+                self.assertNotIn('waiting for map',shown)
+                app.set_language('pt-BR');panel.show_overlay(header_only=True)
+                shown=' '.join(panel.overlay.canvas.itemcget(i,'text') for i in panel.overlay.canvas.find_all() if panel.overlay.canvas.type(i)=='text')
+                self.assertIn('Acompanhamento do mapa pausado',shown)
+                panel.resume_watch();panel.tick()
+                self.assertNotIn('paused',app.overlay_run_status())
+                self.assertIn('waiting for map',app.overlay_run_status())
+            finally:
+                app.set_language('en');app.close()
+
     def test_outside_dungeon_has_one_navigation_status_and_keeps_run_actions(self):
         from PIL import Image
         with tempfile.TemporaryDirectory() as directory, patch('sanctum_panel.game_is_foreground', return_value=True):

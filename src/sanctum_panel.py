@@ -674,7 +674,7 @@ class SanctumPanel:
         if self.always_status.get() and self.app.ledger.active_start() and not preview and not details:
             details='Run active'
         if self.always_status.get() and not self.session.watching and not preview:
-            label='Ready'
+            label='Map tracking paused' if self.session.context_id is not None else 'Ready'
         # Map feedback already describes the current view; omit duplicate
         # waiting/run text so the bar stays at two short lines.
         if header_only and details and self.session.watching:details='\n'+details.partition('\n')[2]
