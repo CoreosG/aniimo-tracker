@@ -26,7 +26,7 @@ Português (Brasil) are available in Settings.
   in Settings. Older run records and statistics remain available.
 - Create or join a **three-player party** with a random invite code and your own
   username. Share circular player markers and the strongest map identification.
-  The host controls party difficulty and can reset navigation for a new run.
+  The host controls party difficulty; any member can start a new shared run.
 
 ## Download for Windows
 
@@ -66,6 +66,31 @@ its source unless a separate local copy is already installed.
 
 Settings are grouped into **General**, **Goals & budget**, **Shortcuts**, and
 **Storage & updates**. Map route targets and icon visibility are separate controls.
+
+Map controls use four sections: **Route**, **Icons**, **Overlay** and **Tools**.
+Overlay contains live opacity, size and zoom previews, a position reset, and
+**Low CPU (1.5s)** position updates. Tools contains minimap calibration and imports.
+**Stop map-only session** is beside the tracking controls at the top. The overlay
+shows a compact status even before map setup; it tells you when a map pack is needed.
+
+## Budget and analytics
+
+The overview's **Break-even estimate** shows the coins you need to sell per run,
+split into tickets, keys and replacement gear. Expand **Planning assumptions** for
+the weekly totals, or choose **Adjust budget** to change the ticket target,
+solo/party key count, gear costs and play schedule. It never deducts modeled costs
+from your wallet automatically.
+
+Analytics filters **Today**, **7/30/90 days**, or **All time** using the game's
+configured reset hour. **Run details** supports sorting, direct editing and
+**Export this period**. Unknown loot remains blank in the CSV; recorded zero
+remains zero. Exports from Analytics exclude screenshot paths and notes.
+
+**Estimated loot/hour** uses the average known loot from ticket-consuming runs
+and your configured run time plus extra minutes. **Loot minus planned cost**
+compares the same sample with the current budget. These are item-value estimates,
+not measured playtime or cash profit. Failed runs remain in overall results and
+known-loot calculations, but do not lower the successful-run points average.
 
 ## First use
 

@@ -101,10 +101,14 @@ class SanctumPanel:
         self.overlay_enabled=tk.BooleanVar(value=self.config.get('overlay_enabled',True))
         self.preview_overlay=tk.BooleanVar(value=False)
         self.last_previewing=False
+        self.preview_position_dirty=False
+        self.adjust_render_id=None
+        self.adjust_save_id=None
         self.opacity=tk.DoubleVar(value=self.config.get('opacity',90))
         self.overlay_size=tk.DoubleVar(value=self.config.get('overlay_size',650))
         self.zoom=tk.DoubleVar(value=self.config.get('zoom',1.0))
         self.follow=tk.BooleanVar(value=self.config.get('follow',True))
+        self.refresh_mode=tk.StringVar(value='Low CPU (1.5s)' if self.config.get('position_interval')==1.5 else 'Normal (0.7s)')
         self.enabled = tk.BooleanVar(value=self.session.enabled)
         self.party = app.budget_party
         self.keys = tk.StringVar(value=str(self.config.get('route_keys',2)))
@@ -121,13 +125,15 @@ class SanctumPanel:
         top=ttk.Frame(self.tab);top.pack(fill='x',pady=(0,16))
         titles=ttk.Frame(top);titles.pack(side='left')
         ttk.Label(titles,text='SANCTUM NAVIGATOR',foreground='#8da8c4',font=('Segoe UI Semibold',9)).pack(anchor='w')
-        ttk.Label(titles,text='Plan your next run',font=('Segoe UI Semibold',22)).pack(anchor='w',pady=(3,0))
-        actions=ttk.Frame(top);actions.pack(side='right',anchor='s')
+        ttk.Label(titles,text='Map & routes',font=('Segoe UI Semibold',22)).pack(anchor='w',pady=(3,0))
+        actions=ttk.Frame(self.tab);actions.pack(fill='x',pady=(0,14))
         self.tracking_button=ttk.Button(actions,text='Resume map',command=self.watch_action,style='Accent.TButton')
         self.tracking_button.pack(side='left',padx=(0,12))
         self.overlay_check=ttk.Checkbutton(actions,text='Show overlay',variable=self.overlay_enabled,command=self.toggle_overlay)
         self.overlay_check.pack(side='left',padx=(0,12))
         self.move_button=ttk.Button(actions,text='Move overlay',command=self.toggle_move);self.move_button.pack(side='left')
+        self.stop_only_button=ttk.Button(actions,text='Stop map-only session',command=self.stop_map_only,style='Card.TButton')
+        self.stop_only_button.pack(side='right')
         body=ttk.Frame(self.tab);body.pack(fill='both',expand=True)
         side=ttk.Frame(body);side.pack(side='left',fill='y',padx=(0,18))
         scroll=tk.Canvas(side,width=285,bg='#0d1421',highlightthickness=0)
@@ -137,8 +143,15 @@ class SanctumPanel:
         controls.bind('<Configure>',lambda e:scroll.configure(scrollregion=scroll.bbox('all')))
         scroll.bind('<Configure>',lambda e:scroll.itemconfigure(window,width=e.width))
         self.app.enable_wheel_scroll(scroll,controls)
+        self.map_section=tk.StringVar(value='Route')
+        section_choice=ttk.Combobox(controls,textvariable=self.map_section,values=('Route','Icons','Overlay','Tools'),state='readonly')
+        section_choice.pack(fill='x',pady=(0,12))
+        section_choice.bind('<<ComboboxSelected>>',lambda event:self.show_map_section())
+        self.map_sections={name:ttk.Frame(controls) for name in ('Route','Icons','Overlay','Tools')}
+        self.map_sections['Route'].pack(fill='x')
+        section=self.map_sections['Route']
         def card(title):
-            frame=ttk.Frame(controls,style='Panel.TFrame',padding=15);frame.pack(fill='x',pady=(0,12))
+            frame=ttk.Frame(section,style='Panel.TFrame',padding=15);frame.pack(fill='x',pady=(0,12))
             ttk.Label(frame,text=title,style='Panel.TLabel',foreground='#9aabc3',font=('Segoe UI Semibold',9)).pack(anchor='w',pady=(0,10))
             return frame
         difficulty=card('DIFFICULTY')
@@ -163,23 +176,36 @@ class SanctumPanel:
         for title,value in [('Nearest exit','nearest'),('Orange portal','orange'),('Blue portal','blue')]:
             ttk.Radiobutton(exits,text=title,variable=self.route_exit,value=value,command=self.save_preferences,style='Panel.TRadiobutton').pack(anchor='w',pady=3)
         ttk.Label(exits,text='Routes always begin at both entrances.',style='Panel.TLabel',wraplength=245,foreground='#9aabc3').pack(anchor='w',pady=(8,0))
+        section=self.map_sections['Icons']
         layers=card('MAP ICONS')
         for title,name in [('Key doors','keys'),('Egg nests','eggs'),('Sanctums / trials','trials'),('Chest rooms','chests'),('Monsters','monsters')]:
             ttk.Checkbutton(layers,text=title,variable=self.icon_vars[name],command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         ttk.Checkbutton(layers,text='Include unconfirmed trials (?)',variable=self.unconfirmed_trials,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         ttk.Checkbutton(layers,text='Map legend',variable=self.legend,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
-        self.advanced=self.app.disclosure(controls,'Display & advanced')
-        options=self.advanced
-        ttk.Checkbutton(options,text='Live overlay preview',variable=self.preview_overlay,command=self.tick).pack(anchor='w',pady=6)
-        ttk.Checkbutton(options,text='Capture / save status in overlay',variable=self.capture_status,command=self.save_preferences).pack(anchor='w',pady=6)
+        section=self.map_sections['Overlay']
+        options=card('OVERLAY DISPLAY')
+        self.advanced=options
+        ttk.Checkbutton(options,text='Live overlay preview',variable=self.preview_overlay,command=self.tick,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
+        ttk.Checkbutton(options,text='Capture / save status in overlay',variable=self.capture_status,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
         for title,var,lo,hi in [('Opacity',self.opacity,15,100),('Overlay size',self.overlay_size,350,950),('Zoom',self.zoom,1,3)]:
-            ttk.Label(options,text=title,style='Muted.TLabel').pack(anchor='w',pady=(9,0))
+            row=ttk.Frame(options,style='Panel.TFrame');row.pack(fill='x',pady=(9,0))
+            ttk.Label(row,text=title,style='Panel.TLabel').pack(side='left')
+            value=tk.StringVar()
+            def update_value(*_,var=var,title=title,value=value):
+                value.set(f'{var.get():.0f}%' if title=='Opacity' else f'{var.get():.0f} px' if title=='Overlay size' else f'{var.get():.1f}×')
+            var.trace_add('write',update_value);update_value()
+            ttk.Label(row,textvariable=value,style='Panel.TLabel',foreground='#79dcc8').pack(side='right')
             ttk.Scale(options,variable=var,from_=lo,to=hi,command=self.adjust_overlay).pack(fill='x',pady=4)
-        ttk.Checkbutton(options,text='Follow player',variable=self.follow,command=self.save_preferences).pack(anchor='w',pady=6)
+        ttk.Checkbutton(options,text='Follow player',variable=self.follow,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=6)
+        ttk.Label(options,text='Position updates',style='Panel.TLabel').pack(anchor='w',pady=(10,4))
+        refresh_choice=ttk.Combobox(options,textvariable=self.refresh_mode,values=('Normal (0.7s)','Low CPU (1.5s)'),state='readonly')
+        refresh_choice.pack(fill='x');refresh_choice.bind('<<ComboboxSelected>>',lambda event:self.save_preferences())
+        ttk.Button(options,text='Reset overlay position',command=self.reset_overlay_position).pack(fill='x',pady=(12,0))
+        section=self.map_sections['Tools']
+        options=card('TOOLS & CALIBRATION')
         ttk.Checkbutton(options,text='Party budget · carry 1 key',variable=self.party,command=self.save_party).pack(anchor='w',pady=6)
         for title,command in [('Set minimap area',self.set_minimap),('Import map image',self.import_map),('Calibrate markers',self.calibrate),('Open local simulator',self.open_simulator)]:
             ttk.Button(options,text=title,command=command).pack(fill='x',pady=3)
-        self.stop_only_button=ttk.Button(options,text='Stop map-only session',command=self.stop_map_only);self.stop_only_button.pack(fill='x',pady=8)
         workspace=ttk.Frame(body,style='Panel.TFrame',padding=18);workspace.pack(side='left',fill='both',expand=True)
         bar=ttk.Frame(workspace,style='Panel.TFrame');bar.pack(fill='x')
         ttk.Label(bar,text='LAYOUT',style='Panel.TLabel',foreground='#9aabc3',font=('Segoe UI Semibold',9)).pack(side='left')
@@ -199,6 +225,19 @@ class SanctumPanel:
         self.update_shortcut_hints()
         for name,spin in self.count_spins.items():
             spin.configure(state='readonly' if self.route_goal.get() in (name,'both') else 'disabled')
+
+    def show_map_section(self):
+        for frame in self.map_sections.values():frame.pack_forget()
+        self.map_sections[self.map_section.get()].pack(fill='x')
+        if self.map_section.get()!='Overlay':self.preview_overlay.set(False)
+        self.tick()
+
+    def reset_overlay_position(self):
+        self.config.pop('overlay_position',None)
+        self.overlay.position=None
+        self.preview_overlay.set(True)
+        self.overlay_dirty=True
+        self.write_config();self.tick()
 
     def change_difficulty(self):
         difficulty=self.difficulty.get()
@@ -270,6 +309,7 @@ class SanctumPanel:
             standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),route_rooms=int(self.route_rooms.get()),route_exit=self.route_exit.get(),legend=self.legend.get(),icons={k:v.get() for k,v in self.icon_vars.items()},
             overlay_enabled=self.overlay_enabled.get(),opacity=round(self.opacity.get()),overlay_size=round(self.overlay_size.get()),
             zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),unconfirmed_trials=self.unconfirmed_trials.get())
+        self.config['position_interval']=1.5 if self.refresh_mode.get()=='Low CPU (1.5s)' else .7
         self.overlay_dirty=True
         if hasattr(self,'count_spins'):
             for name,spin in self.count_spins.items():spin.configure(state='readonly' if self.route_goal.get() in (name,'both') else 'disabled')
@@ -280,8 +320,20 @@ class SanctumPanel:
 
     def adjust_overlay(self,_=None):
         self.preview_overlay.set(True)
-        self.save_preferences()
+        self.overlay_dirty=True
+        if self.adjust_render_id is None:
+            self.tick()
+            self.adjust_render_id=self.app.after(33,self.render_adjustment)
+        if self.adjust_save_id is not None:self.app.after_cancel(self.adjust_save_id)
+        self.adjust_save_id=self.app.after(200,self.save_adjustment)
+
+    def render_adjustment(self):
+        self.adjust_render_id=None
         self.tick()
+
+    def save_adjustment(self):
+        self.adjust_save_id=None
+        self.save_preferences()
 
     def write_config(self):
         temp = self.config_path.with_suffix('.tmp')
@@ -430,7 +482,7 @@ class SanctumPanel:
             except (OSError,ValueError,KeyError):
                 pass
         capturing=self.app.busy_capture or self.app.auto_busy or not self.assets_ready
-        if self.session.watching and in_game and self.scan_until>now and now>=self.next_scan and not self.busy and not capturing:
+        if self.session.watching and in_game and (self.scan_until>now or self.map_open) and now>=self.next_scan and not self.busy and not capturing:
             self.scan()
             self.next_scan = now+1.2
         if self.map_rescan_pending and now>=self.scan_until:self.map_rescan_pending=False
@@ -439,9 +491,9 @@ class SanctumPanel:
         if self.session.watching and not self.session.map_confirmed and in_game and now>=self.next_screen_probe and not self.busy and not capturing:
             self.scan()
             self.next_screen_probe=now+1.2
-        if self.session.can_track_minimap and not self.map_rescan_pending and in_game and now>=self.next_minimap and not self.busy and not capturing:
+        if self.session.can_track_minimap and not self.map_open and not self.map_rescan_pending and in_game and now>=self.next_minimap and not self.busy and not capturing:
             self.scan(minimap=True)
-            self.next_minimap=now+(.7 if self.engine else 3.)
+            self.next_minimap=now+(self.config.get('position_interval',.7) if self.engine else 3.)
         while not self.messages.empty():
             generation,image,reading,error = self.messages.get_nowait()
             self.busy = False
@@ -470,11 +522,10 @@ class SanctumPanel:
                         self.accept_layout(reading['match']['layout'],{})
                     self.player=reading['match']['player'];self.position_time=now;self.overlay_dirty=True
                     self.config.update(player=self.player,layout=self.engine.layout)
-                    self.write_config()
                     match=reading['match']
                     evidence=f'{match["confidence"]:.0%} corridor match' if match.get('method')=='corridors' else f'{match["inliers"]} matched features'
                     self.status.set(f'Layout {self.engine.layout} · following minimap · {evidence}')
-                    self.paint()
+                    self.preview_position_dirty=True
                 continue
             candidates = reading.get('candidates',[])
             if candidates and not reading.get('explicit'):
@@ -520,6 +571,8 @@ class SanctumPanel:
             self.status.set(f'Layout {self.engine.layout} · position paused · open the game map to refresh or set minimap area')
         arranging=self.overlay.movable and self.overlay_enabled.get()
         on_map_tab=self.app.tabs.select()==str(self.app.sanctum_tab)
+        if self.preview_position_dirty and on_map_tab and app_is_foreground():
+            self.paint();self.preview_position_dirty=False
         if not on_map_tab:self.preview_overlay.set(False)
         previewing=self.assets_ready and self.preview_overlay.get() and on_map_tab and app_is_foreground()
         if previewing!=self.last_previewing:
@@ -533,7 +586,17 @@ class SanctumPanel:
             self.overlay_dirty=False
 
     def show_overlay(self,header_only=False,preview=False):
-        size=round(self.overlay_size.get());screen=monitors()[self.app.ledger.settings()['monitor']]['bbox']
+        screens=monitors()
+        if not screens:return
+        index=self.app.ledger.settings()['monitor']
+        selected=screens[index] if 0<=index<len(screens) else next((m for m in screens if m.get('primary')),screens[0])
+        screen=selected['bbox']
+        size=round(self.overlay_size.get())
+        position=self.overlay.position if self.overlay.movable and self.overlay.position else self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
+        screen=next((m['bbox'] for m in screens if m['bbox'][0]<=position[0]<m['bbox'][2] and m['bbox'][1]<=position[1]<m['bbox'][3]),screen)
+        size=max(150,min(size,screen[2]-screen[0]-32,screen[3]-screen[1]-100))
+        position=[max(screen[0]+12,min(position[0],screen[2]-size-12)),max(screen[1]+12,min(position[1],screen[3]-size-88))]
+        if self.overlay.movable:self.overlay.position=tuple(position)
         engine=(self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)) if self.assets_ready else None
         draw_map=not header_only and engine is not None and (preview or self.session.map_confirmed or self.overlay.movable)
         live=time.monotonic()-self.position_time<2
@@ -542,9 +605,6 @@ class SanctumPanel:
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · open {self.app.shortcut_hint("map")}'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
-        position=self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
-        if not any(position[0]+size>m['bbox'][0]+40 and position[0]<m['bbox'][2]-40 and position[1]+size>m['bbox'][1]+40 and position[1]<m['bbox'][3]-40 for m in monitors()):
-            position=[screen[2]-size-20,screen[1]+70]
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         # Map feedback already describes the current view; omit duplicate
         # waiting/run text so the bar stays at two short lines.
@@ -556,13 +616,17 @@ class SanctumPanel:
             self.status.set('Download the map pack in Map & routes first.');return
         if self.busy:
             return
+        screens=monitors()
+        monitor = self.app.ledger.settings()['monitor']
+        if not 0<=monitor<len(screens):
+            self.status.set('Selected display is disconnected; choose a display in Settings.')
+            return
         self.busy = True
         generation = self.generation
         requested=self.map_rescan_pending or explicit
-        monitor = self.app.ledger.settings()['monitor']
         if self.overlay.visible and not self.overlay.capture_excluded:
             self.overlay.hide();self.app.update_idletasks()
-        bbox=monitors()[monitor]['bbox']
+        bbox=screens[monitor]['bbox']
         engine=self.engine
         detector=self.detector
         maps=self.maps
@@ -712,8 +776,15 @@ class SanctumPanel:
     def select_layout(self):
         if self.layout.get()=='Auto / waiting':
             self.manual_layout = None
-            self.config['layout'] = None
-            self.engine=None;self.player=None;self.overlay.hide()
+            self.session.map_confirmed=False
+            self.map_open=False;self.map_rescan_pending=False
+            self.generation+=1
+            self.scan_until=0;self.next_screen_probe=0;self.position_time=0
+            self.last_reading={};self.last_image=None
+            self.config.update(layout=None,player=None,reading={},map_confirmed=False)
+            self.engine=None;self.player=None;self.overlay.hide();self.overlay_dirty=True
+            self.status.set('Waiting for map · open '+self.app.shortcut_hint('map'))
+            self.paint()
         else:
             self.manual_layout = int(self.layout.get())
             self.config['layout'] = self.manual_layout
@@ -743,6 +814,9 @@ class SanctumPanel:
         self.route_status.set('Opening local simulator · orange and blue entrance routes · works offline')
 
     def close(self):
+        for timer in (self.adjust_render_id,self.adjust_save_id):
+            if timer is not None:self.app.after_cancel(timer)
+        if self.adjust_save_id is not None:self.save_preferences()
         self.config['shutdown'] = True
         self.write_config()
         self.overlay.close()
@@ -767,7 +841,13 @@ class SanctumPanel:
     def set_minimap(self):
         self.app.withdraw();self.overlay.hide()
         def capture():
-            image=ImageGrab.grab(bbox=monitors()[self.app.ledger.settings()['monitor']]['bbox'],all_screens=True).convert('RGB')
+            screens=monitors();monitor=self.app.ledger.settings()['monitor']
+            if not 0<=monitor<len(screens):
+                self.app.deiconify();self.status.set('Selected display is disconnected; choose a display in Settings.')
+                return
+            try:image=ImageGrab.grab(bbox=screens[monitor]['bbox'],all_screens=True).convert('RGB')
+            except OSError:
+                self.app.deiconify();self.status.set('Map capture failed');return
             self.app.deiconify();window=tk.Toplevel(self.app);window.title('Drag tightly around the minimap; release to save')
             shown=image.copy();shown.thumbnail((1200,750))
             canvas=tk.Canvas(window,width=shown.width,height=shown.height,highlightthickness=0);canvas.pack()

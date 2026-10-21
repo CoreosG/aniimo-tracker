@@ -14,6 +14,10 @@
 
 **Party location**: A player's last observed coordinates on the shared layout. A location belongs to one shared run and layout revision; old or incompatible locations cannot move a marker on a new layout.
 
+**Modeled margin**: Known extracted item value minus the current planned per-run cost. It is a comparison against today's budget settings, not realized cash profit or historical spending.
+
+**Estimated rate**: A rate based on ticket-consuming runs and configured run minutes plus extra minutes. It is not measured playtime. Unknown loot is excluded from loot averages and rates, while known zero loot is included.
+
 ## Map and distribution invariants
 
 Route targets and icon visibility are independent. Rich-room and trial goals use the downloaded route graph. Exit preference applies separately to routes from both entrances; the default remains the nearest exit. A navigation preference never changes the run ledger.

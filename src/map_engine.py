@@ -53,6 +53,9 @@ class MapEngine:
         small=Image.new('RGB',(500,500));small.paste(fit,tuple(self.floor_offset))
         self.floor=self._floor(small,110)
         self.geometry_scale=None
+        self._minimap_area=None
+        self._minimap_frame_size=None
+        self._minimap_misses=0
 
     @staticmethod
     def _floor(image,threshold):
@@ -129,6 +132,31 @@ class MapEngine:
 
     def match_minimap(self,frame,region=None,previous=None):
         """Return a position only after geometric registration; never dead-reckon."""
+        # An accepted registration establishes the HUD bounds too. Reuse only
+        # those bounds; every frame still passes the same geometric and player
+        # validation. Explicit user calibration always takes precedence.
+        if region is not None:
+            return self._match_minimap(frame,region,previous)
+        if self._minimap_frame_size!=frame.size:
+            self._minimap_area=None
+            self._minimap_misses=0
+            self._minimap_frame_size=frame.size
+        if self._minimap_area is not None:
+            result=self._match_minimap(frame,self._minimap_area,previous)
+            if result:
+                self._minimap_misses=0
+                return result
+            self._minimap_misses+=1
+            if self._minimap_misses<2:return None
+            self._minimap_area=None
+        result=self._match_minimap(frame,None,previous)
+        if result:
+            w,h=frame.size
+            self._minimap_area=[n/scale for n,scale in zip(result['region'],(w,h,w,h))]
+            self._minimap_misses=0
+        return result
+
+    def _match_minimap(self,frame,region=None,previous=None):
         w,h=frame.size
         boxes=[tuple(round(n*s) for n,s in zip(region,(w,h,w,h)))] if region else []
         if not region:

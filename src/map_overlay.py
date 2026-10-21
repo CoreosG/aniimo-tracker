@@ -2,6 +2,7 @@
 import ctypes
 from ctypes import wintypes
 import tkinter as tk
+from tkinter import font as tkfont
 from PIL import ImageTk
 from i18n import tr
 
@@ -20,6 +21,7 @@ class MapOverlay:
         self.window.attributes('-transparentcolor','#000001')
         self.canvas=tk.Canvas(self.window,bg='#000001',highlightthickness=0)
         self.canvas.pack(fill='both',expand=True)
+        self.header_font=tkfont.Font(family='Segoe UI',size=9,weight='bold')
         self.canvas.bind('<ButtonPress-1>',self.start_drag)
         self.canvas.bind('<B1-Motion>',self.drag)
         self.canvas.bind('<ButtonRelease-1>',self.finish_drag)
@@ -88,7 +90,13 @@ class MapOverlay:
             state,_,values=details.partition('\n')
             if state:label=(label+' · ' if label else '')+state
             if values:label+='\n'+values
-        text=self.canvas.create_text(12,10,text=tr(label),fill='#a4ffe1',anchor='nw',width=image.width-24,font=('Segoe UI',9,'bold'))
+        lines=[]
+        for line in tr(label).split('\n')[:2]:
+            if self.header_font.measure(line)>image.width-24:
+                while line and self.header_font.measure(line+'…')>image.width-24:line=line[:-1]
+                line=line.rstrip()+'…'
+            lines.append(line)
+        text=self.canvas.create_text(12,10,text='\n'.join(lines),fill='#a4ffe1',anchor='nw',font=self.header_font)
         bottom=self.canvas.bbox(text)[3]+8
         background=self.canvas.create_rectangle(4,4,image.width-4,bottom,fill='#15232c',outline='#68e1b9')
         self.canvas.tag_lower(background,text)

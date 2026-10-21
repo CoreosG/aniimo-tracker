@@ -1,9 +1,8 @@
 """Native interactive history charts; no game observation or ledger writes."""
-import math
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 from datetime import datetime
-from analytics import build_report
+from analytics import build_report, export_runs_csv
 from i18n import tr,display_day
 
 PANEL='#182235'
@@ -43,6 +42,7 @@ class HistoryChart(tk.Canvas):
 
     def draw(self):
         self.delete('all')
+        self.positions=[]
         width,height=max(200,self.winfo_width()),max(120,self.winfo_height())
         if not self.rows:
             self.create_text(width/2,height/2,text=self.empty,fill=MUTED,width=width-45,
@@ -135,13 +135,15 @@ class AnalyticsPanel:
         self.canvas.bind('<Configure>',lambda event:self.canvas.itemconfigure(window,width=event.width))
         app.enable_wheel_scroll(self.canvas,body)
         heading=ttk.Frame(body);heading.pack(fill='x',pady=(0,5))
-        ttk.Label(heading,text='Your runs, in perspective',font=('Segoe UI Semibold',20)).pack(side='left')
-        ttk.Button(heading,text='Balance history / edit',command=app.show_balance_history).pack(side='right',padx=10)
+        ttk.Label(heading,text='Analytics',font=('Segoe UI Semibold',20)).pack(side='left')
         self.period=tk.StringVar(value='30 days')
-        choice=ttk.Combobox(heading,textvariable=self.period,state='readonly',values=('7 days','30 days','All time'),width=11)
+        choice=ttk.Combobox(heading,textvariable=self.period,state='readonly',values=('Today','7 days','30 days','90 days','All time'),width=11)
         choice.pack(side='right',padx=(10,0));choice.bind('<<ComboboxSelected>>',lambda event:self.refresh())
-        ttk.Label(body,text='Loot is item value. Wallet history includes sales, purchases and saved balance corrections.',
-                  style='Muted.TLabel',wraplength=1000).pack(anchor='w',pady=(0,13))
+        actions=ttk.Frame(body);actions.pack(fill='x',pady=(0,12))
+        ttk.Label(actions,text='Loot value ≠ cash balance',style='Muted.TLabel').pack(side='left')
+        ttk.Button(actions,text='Balance history / edit',command=app.show_balance_history).pack(side='right')
+        self.export_button=ttk.Button(actions,text='Export this period',command=self.export)
+        self.export_button.pack(side='right',padx=(0,8))
         metrics=ttk.Frame(body);metrics.pack(fill='x',pady=(0,14))
         self.metrics={}
         for index,(key,title) in enumerate((('loot','KNOWN LOOT'),('wallet','WALLET NOW'),('costs','LOGGED COSTS'),('runs','RUN RESULTS'))):
@@ -155,7 +157,39 @@ class AnalyticsPanel:
             label.pack(anchor='w')
             box.bind('<Configure>',lambda event,label=label:label.configure(wraplength=max(90,event.width-24)))
             self.metrics[key]=(value,detail)
-        grid=ttk.Frame(body);grid.pack(fill='x')
+        insights=ttk.Frame(body);insights.pack(fill='x',pady=(0,12))
+        for index,(key,title) in enumerate((('hour','ESTIMATED LOOT / HOUR'),('margin','LOOT MINUS PLANNED COST'))):
+            insights.columnconfigure(index,weight=1,uniform='insights')
+            box=ttk.Frame(insights,style='Panel.TFrame',padding=12)
+            box.grid(row=0,column=index,sticky='nsew',padx=(8 if index else 0,0))
+            ttk.Label(box,text=title,style='Panel.TLabel',foreground=MUTED,font=('Segoe UI',9)).pack(anchor='w')
+            value,detail=tk.StringVar(),tk.StringVar()
+            ttk.Label(box,textvariable=value,style='Panel.TLabel',font=('Segoe UI Semibold',19)).pack(anchor='w')
+            caption=ttk.Label(box,textvariable=detail,style='Panel.TLabel',foreground=MUTED,font=('Segoe UI',9),wraplength=400)
+            caption.pack(anchor='w')
+            box.bind('<Configure>',lambda event,label=caption:label.configure(wraplength=max(90,event.width-24)))
+            self.metrics[key]=(value,detail)
+        views=ttk.Notebook(body);views.pack(fill='both',expand=True,pady=(0,10))
+        grid=ttk.Frame(views,padding=(0,10));views.add(grid,text='Charts')
+        details=ttk.Frame(views,padding=(0,10));views.add(details,text='Run details')
+        detail_bar=ttk.Frame(details);detail_bar.pack(fill='x',pady=(0,8))
+        ttk.Label(detail_bar,text='Select a result to correct it. Unknown loot stays blank in CSV.',style='Muted.TLabel').pack(side='left')
+        self.edit_button=ttk.Button(detail_bar,text='Edit selected run',command=self.edit_selected,state='disabled')
+        self.edit_button.pack(side='right')
+        self.results=ttk.Treeview(details,columns=('id','day','points','money','margin','result'),show='headings',height=13,selectmode='browse')
+        for key,title,width in (('id','#',45),('day','Game day',110),('points','Points',80),('money','Loot value',110),
+                                ('margin','Vs. planned cost',130),('result','Result',100)):
+            self.results.heading(key,text=title,command=lambda column=key:self.sort_results(column))
+            self.results.column(key,width=width,minwidth=40,anchor='w' if key in ('day','result') else 'e')
+        self.results.tag_configure('failed',foreground=RED)
+        table_scroll=ttk.Scrollbar(details,orient='vertical',command=self.results.yview)
+        self.results.configure(yscrollcommand=table_scroll.set)
+        table_scroll.pack(side='right',fill='y');self.results.pack(fill='both',expand=True)
+        self.results.bind('<<TreeviewSelect>>',lambda event:self.edit_button.configure(state='normal' if self.results.selection() else 'disabled'))
+        self.results.bind('<Double-1>',self.edit_selected);self.results.bind('<Return>',self.edit_selected)
+        self.sort_column,self.sort_reverse='id',True
+        ttk.Label(details,text='Planned cost uses your current budget settings. This comparison is not cash profit.',
+                  style='Muted.TLabel',wraplength=750).pack(anchor='w',pady=(8,0))
         for column in (0,1):grid.columnconfigure(column,weight=1,uniform='charts')
         self.charts={}
         specs=(('loot','Loot & logged costs','Teal: known loot · red: logged costs · ?: missing loot'),
@@ -178,7 +212,7 @@ class AnalyticsPanel:
                   style='Muted.TLabel',wraplength=1000).pack(anchor='w')
 
     def refresh(self):
-        days={'7 days':7,'30 days':30,'All time':None}[self.period.get()]
+        days={'Today':1,'7 days':7,'30 days':30,'90 days':90,'All time':None}[self.period.get()]
         self.report=report=build_report(self.app.ledger,days)
         totals=report['totals'];known=totals['runs']-totals['unknown_loot']
         self.metrics['loot'][0].set('Unknown' if totals['runs'] and not known else compact(totals['loot']))
@@ -190,6 +224,15 @@ class AnalyticsPanel:
         self.metrics['runs'][0].set(str(totals['runs']))
         average=f"{totals['average_points']:.1f} pts/success" if totals['average_points'] is not None else 'No successful pace yet'
         self.metrics['runs'][1].set(f"{totals['failed']} failed · {average}")
+        performance=report['performance']
+        self.metrics['hour'][0].set(compact(performance['loot_per_hour']) if performance['loot_per_hour'] is not None else '—')
+        self.metrics['hour'][1].set(f"{performance['known_ticketed_loot']}/{performance['ticketed_runs']} ticketed runs with loot · {performance['minutes_per_run']} min/run incl. extras")
+        margin=performance['average_modeled_margin']
+        self.metrics['margin'][0].set(('+' if margin>=0 else '')+compact(margin)+'/run' if margin is not None else '—')
+        budget=performance['planned_cost_per_run']
+        self.metrics['margin'][1].set(f"Budget {compact(budget)}/run · item value, not cash profit" if budget is not None else 'Set planned runs in Settings to compare costs')
+        self.export_button.configure(state='normal' if report['runs'] else 'disabled')
+        self.render_results()
         rows=[{**row,'negative_costs':-row['costs'],'negative_lost':-row['lost'],'negative_used':-row['used']} for row in report['daily']]
         loot_rows=rows if any(row['runs'] or row['costs'] for row in rows) else []
         self.charts['loot'].set_data(loot_rows,(('loot','Loot',TEAL),('negative_costs','Costs',RED)),
@@ -202,4 +245,51 @@ class AnalyticsPanel:
             (('bought','Bought',BLUE),('free','Free',GOLD),('negative_used','Used',RED)),
             lambda row:f"{row['day']}\nBought: {row['bought']} · Free: {row['free']}\nUsed: {row['used']}")
         change=f" · Wallet checkpoint change: {report['wallet_change']:+,} coins" if report['wallet_change'] is not None else ''
-        self.range_text.set(f"{report['start']} → {report['end']} · Net points: {totals['net_points']:+,}"+change)
+        self.range_text.set(f"{report['start']} → {report['end']} · Net points: {totals['net_points']:+,}"
+            +f" · Estimated time: {performance['estimated_minutes']:,} min"+change)
+
+    def render_results(self):
+        selected=self.results.selection()
+        rows=self.report['runs'] if self.report else []
+        key={'margin':'modeled_margin','result':'failed','money':'money'}.get(self.sort_column,self.sort_column)
+        # Missing loot is never sorted as a zero-valued run.
+        known=sorted((row for row in rows if row[key] is not None),key=lambda row:row[key],reverse=self.sort_reverse)
+        ordered=known+[row for row in rows if row[key] is None]
+        self.results.delete(*self.results.get_children())
+        for row in ordered:
+            margin=row['modeled_margin']
+            self.results.insert('','end',iid=str(row['id']),values=(row['id'],tr(row['day']),f"{row['points']:+,}",
+                tr(f"{row['money']:,}") if row['money'] is not None else tr('Unknown'),
+                tr(f"{margin:+,.0f}") if margin is not None else '—',
+                tr('Failed' if row['failed'] else 'Success' if row['consumes_ticket'] else 'Bonus')),
+                tags=('failed',) if row['failed'] else ())
+        if selected and self.results.exists(selected[0]):self.results.selection_set(selected[0])
+        self.edit_button.configure(state='normal' if self.results.selection() else 'disabled')
+
+    def sort_results(self,column):
+        self.sort_reverse=not self.sort_reverse if column==self.sort_column else False
+        self.sort_column=column
+        self.render_results()
+
+    def edit_selected(self,event=None):
+        if event is not None and event.type==tk.EventType.ButtonPress:
+            item=self.results.identify_row(event.y)
+            if not item:return
+            self.results.selection_set(item)
+        selected=self.results.selection()
+        if not selected:return
+        if self.app.tree.exists(selected[0]):
+            self.app.tree.selection_set(selected[0])
+            self.app.edit_selected()
+
+    def export(self):
+        if not self.report or not self.report['runs']:return
+        path=filedialog.asksaveasfilename(parent=self.app,defaultextension='.csv',
+            initialfile=f"aniimo-{self.report['start']}-{self.report['end']}.csv",
+            filetypes=[(tr('CSV'),'*.csv')])
+        if not path:return
+        try:
+            export_runs_csv(self.report,path)
+            self.app.status.set(f"Exported {len(self.report['runs'])} run results")
+        except OSError as error:
+            messagebox.showerror(tr('Export failed'),str(error),parent=self.app)

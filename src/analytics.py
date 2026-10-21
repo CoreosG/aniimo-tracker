@@ -1,5 +1,20 @@
 """Read-only chart data: loot is inventory value, wallet checkpoints are cash."""
 from datetime import date, datetime, time, timedelta
+from statistics import median
+from tracker_core import break_even
+import csv
+
+
+def export_runs_csv(report, path):
+    """Export the selected report, with blank cells for unknown numeric values."""
+    columns = ('run_id','game_day','points','loot_value','recorded_expenses','failed',
+               'consumes_ticket','modeled_cost','modeled_margin_not_cash_profit')
+    with open(path,'w',encoding='utf-8-sig',newline='') as stream:
+        writer=csv.writer(stream)
+        writer.writerow(columns)
+        for row in report['runs']:
+            writer.writerow((row['id'],row['day'],row['points'],row['money'],row['expenses'],
+                row['failed'],row['consumes_ticket'],row['modeled_cost'],row['modeled_margin']))
 
 
 def build_report(ledger, days=30, today=None):
@@ -76,7 +91,24 @@ def build_report(ledger, days=30, today=None):
                            estimated=state['coins_estimated'],approximate=state['coins_approximate'],
                            reason='Current wallet estimate' if state['coins_estimated'] else 'Current recorded balance',carried=False))
     change = wallet[-1]['coins']-wallet[0]['coins'] if len(wallet)>1 else None
+    # A budget comparison is deliberately separate from cash and recorded spending.
+    budget = break_even(settings)['per_run']
+    ticketed = [row for row in selected if row['consumes_ticket']]
+    known = [row['money'] for row in ticketed if row['money'] is not None]
+    minutes = settings['run_minutes'] + settings['extra_minutes']
+    average_loot = sum(known)/len(known) if known else None
+    performance = dict(ticketed_runs=len(ticketed),known_ticketed_loot=len(known),
+        estimated_minutes=len(ticketed)*minutes,minutes_per_run=minutes,
+        average_loot=average_loot,median_points=median(samples) if samples else None,
+        planned_cost_per_run=budget,
+        loot_per_hour=average_loot*60/minutes if average_loot is not None else None,
+        points_per_hour=sum(row['points'] for row in ticketed)*60/(len(ticketed)*minutes) if ticketed else None,
+        average_modeled_margin=average_loot-budget if average_loot is not None and budget is not None else None)
+    results = [{**row,'modeled_cost':budget if row['consumes_ticket'] else None,
+        'modeled_margin':row['money']-budget if row['consumes_ticket'] and row['money'] is not None and budget is not None else None}
+        for row in selected]
     return dict(start=str(start),end=str(today),daily=entries,current_wallet=state['coins'],
+                runs=results,performance=performance,
                 wallet=wallet,wallet_change=change,wallet_known=wallet_known,
                 wallet_estimated=state['coins_estimated'],wallet_approximate=state['coins_approximate'],
                 totals=dict(runs=len(selected),failed=sum(bool(row['failed']) for row in selected),

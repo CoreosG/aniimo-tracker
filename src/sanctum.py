@@ -143,7 +143,7 @@ class Detector:
     def _partly_visible_portal(self,frame,kind):
         """Recover one covered icon from its visible shape and absolute colors.
 
-        Only used with the full-map UI and the other portal already found.
+        Only used after the full-map UI has been confirmed.
         Search colored components locally, normally using at least half of the
         template. A distinctive blue rim can use a smaller fragment with a
         stricter ambiguity margin. Never lower the whole-icon threshold.
@@ -209,7 +209,7 @@ class Detector:
         return [int(n) for n in point],round(score,3)
 
     @staticmethod
-    def _marker_regions(frame, template, kind):
+    def _marker_regions(frame, template, kind, pad=None):
         """Find small color-supported search areas; template scores still decide."""
         import cv2
         import numpy as np
@@ -223,7 +223,7 @@ class Detector:
             return [(0,0,frame.shape[1],frame.shape[0])]
         mask = cv2.inRange(cv2.cvtColor(frame,cv2.COLOR_RGB2HSV),lo,hi)
         _,_,stats,_ = cv2.connectedComponentsWithStats(mask)
-        pad = max(template.shape[:2])*2
+        pad = max(template.shape[:2])*2 if pad is None else pad
         regions = []
         for x,y,w,h,area in stats[1:]:
             if not 4 <= area <= 5000 or w > 140 or h > 140:
@@ -242,6 +242,108 @@ class Detector:
                     index += 1
             regions.append(rect)
         return regions
+
+    def _fragmented_portal(self, frame, kind):
+        """Match separated visible rim/door fragments around stacked badges.
+
+        A clean fragment proposes a location, then the combined visible white
+        doorway and the correct portal color must support it. Badge colors alone
+        cannot confirm a door. Used only after the full-map gate, with default
+        templates; custom calibration retains its previous matching behavior.
+        """
+        import cv2
+        import numpy as np
+        from PIL import Image
+        path = ASSETS/'orange-full.png' if kind == 'orange' else self.template_path(kind)
+        if not path.exists():
+            return None
+        with Image.open(path) as image:
+            template = np.asarray(image.convert('RGB'))
+        regions = self._marker_regions(frame, template, kind, pad=max(template.shape[:2]))
+        proposals = []
+        for factor in (.8, 1., 1.2):
+            width, height = (max(9, round(size*factor)) for size in template.shape[1::-1])
+            patch = cv2.resize(template, (width, height))
+            gray_patch = cv2.cvtColor(patch, cv2.COLOR_RGB2GRAY)
+            hsv = cv2.cvtColor(patch, cv2.COLOR_RGB2HSV)
+            lo, hi = ((8, 95, 110), (35, 255, 255)) if kind == 'orange' else ((90, 65, 120), (135, 255, 255))
+            colored = cv2.inRange(hsv, np.array(lo), np.array(hi)).astype(bool)
+            white = (patch.min(axis=2) > 195) & (np.ptp(patch, axis=2) < 65)
+            foreground = colored | white
+            masks = []
+            # Opposite sides remain visible when all three badges cover the
+            # middle. Top/bottom fragments handle a badge over one half.
+            for fraction in (.15, .25, .33):
+                sides = np.zeros((height, width), np.uint8)
+                band = max(2, round(width*fraction))
+                sides[:, :band] = 1
+                sides[:, -band:] = 1
+                masks.append(sides)
+                if fraction != .33:
+                    for right_side in (False, True):
+                        side = np.zeros((height, width), np.uint8)
+                        if right_side:
+                            side[:, -band:] = 1
+                        else:
+                            side[:, :band] = 1
+                        masks.append(side)
+            for fraction in (.25, .33):
+                band = max(2, round(height*fraction))
+                for bottom in (False, True):
+                    mask = np.zeros((height, width), np.uint8)
+                    mask[-band:] = 1 if bottom else 0
+                    if not bottom:
+                        mask[:band] = 1
+                    masks.append(mask)
+            for left, top, right, bottom in regions:
+                crop = frame[top:bottom, left:right]
+                if crop.shape[0] < height or crop.shape[1] < width:
+                    continue
+                gray_crop = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+                for region_mask in masks:
+                    mask = (region_mask.astype(bool) & foreground).astype(np.uint8)
+                    if mask.sum() < 45 or colored[mask.astype(bool)].sum() < 5:
+                        continue
+                    response = cv2.matchTemplate(gray_crop, gray_patch, cv2.TM_CCOEFF_NORMED, mask=mask)
+                    response[~np.isfinite(response)] = -1
+                    _, score, _, point = cv2.minMaxLoc(response)
+                    if score < .90:
+                        continue
+                    px, py = point
+                    observed = crop[py:py+height, px:px+width]
+                    error = np.sqrt(np.mean((observed.astype(float)-patch)**2, axis=2))
+                    visible = (error < 38) & foreground
+                    # Require genuine doorway shape plus its color, across
+                    # spatially separated fragments, rather than a player number.
+                    if visible.sum() < max(75, foreground.sum()*.30):
+                        continue
+                    if (visible & colored).sum() < max(8, colored.sum()*.15):
+                        continue
+                    if (visible & white).sum() < max(18, white.sum()*.25):
+                        continue
+                    ys, xs = np.nonzero(visible)
+                    if np.ptp(xs) < width*.55 or np.ptp(ys) < height*.35:
+                        continue
+                    rms = float(np.sqrt(np.mean(error[mask.astype(bool)]**2)))
+                    if rms > 32:
+                        continue
+                    # Covered pixels lower shared evidence relative to a clean
+                    # whole icon, even when the remaining rim matches perfectly.
+                    coverage = min(1., visible.sum()/max(1, foreground.sum()))
+                    confidence = min(.94, float(score))*(.75+.25*coverage)
+                    # The original orange calibration is its bottom fragment,
+                    # 15 pixels below this full crop's centre. Keep that anchor
+                    # so map registration does not jump when recovery is used.
+                    anchor_y = height//2 + (round(15*factor) if kind == 'orange' else 0)
+                    proposals.append((confidence, [left+px+width//2, top+py+anchor_y]))
+        proposals.sort(reverse=True)
+        if not proposals:
+            return None
+        score, point = proposals[0]
+        alternative = max((value for value, other in proposals if math.dist(point, other)>25), default=-1)
+        if score-alternative < .035:
+            return None
+        return point, round(float(score), 3)
 
     def detect(self, image):
         if not (ASSETS/'simulator'/f'layout-{layouts_for(self.difficulty)[0]}.json').exists():
@@ -288,12 +390,14 @@ class Detector:
                 result[kind],scores[kind] = best[1],round(best[0],3)
         occluded=[]
         missing=[kind for kind in ('orange','blue') if kind not in result]
-        if len(missing)==1 and not (self.folder/'orange.png').exists():
-            kind=missing[0]
-            recovered=self._partly_visible_portal(frame,kind)
-            if recovered:
-                result[kind],scores[kind]=recovered
-                occluded.append(kind)
+        if missing and not (self.folder/'orange.png').exists():
+            for kind in missing:
+                recovered=self._fragmented_portal(frame,kind)
+                if not recovered:
+                    recovered=self._partly_visible_portal(frame,kind)
+                if recovered:
+                    result[kind],scores[kind]=recovered
+                    occluded.append(kind)
         if 'orange' not in result or 'blue' not in result:
             return dict(**result,scores=scores,candidates=[],map_screen=True, reason='Entrance hidden or unclear · waiting for both portals. Player markers can cover a door; move away briefly or fit both doors on the map.')
         if all(result[k][0] < image.width*.3 and result[k][1] < image.height*.35 for k in ('orange','blue')):

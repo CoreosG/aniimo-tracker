@@ -3,7 +3,7 @@ from PyInstaller.utils.hooks import collect_all
 from pathlib import Path
 root=Path(SPECPATH).parent
 
-datas = [(str(root/'assets'/name),'assets') for name in ('blue.png','orange.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json')]
+datas = [(str(root/'assets'/name),'assets') for name in ('blue.png','orange.png','orange-full.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json')]
 datas += [(str(root/'assets/tutorial'),'assets/tutorial')]
 datas += [(str(root/'assets/branding/app.ico'),'assets/branding')]
 binaries = []

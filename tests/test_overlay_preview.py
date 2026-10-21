@@ -5,6 +5,32 @@ from app import App
 
 
 class OverlayPreviewTests(unittest.TestCase):
+    def test_overlay_status_stays_compact_with_long_shortcuts_and_notices(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                overlay=app.sanctum.overlay
+                overlay.show(Image.new('RGB',(350,1),'#000001'),(20,20,0,0),label='Chaos 39 · Run active · previous run unfinished · waiting for map · '*3,
+                             details='Run active\nLoot 1.25M · Pts 400 · Ctrl+Shift+Alt+F12 save')
+                app.update_idletasks()
+                self.assertLessEqual(overlay.window.winfo_height(),75)
+            finally:app.close()
+
+    def test_large_overlay_is_kept_inside_a_small_display(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                app.sanctum.overlay_size.set(950)
+                app.sanctum.config['overlay_position']=[600,450]
+                with patch('sanctum_panel.monitors',return_value=[dict(bbox=(0,0,640,480),primary=True)]):
+                    app.sanctum.show_overlay(preview=True)
+                    app.update_idletasks()
+                window=app.sanctum.overlay.window
+                self.assertLessEqual(window.winfo_x()+window.winfo_width(),640)
+                self.assertLessEqual(window.winfo_y()+window.winfo_height(),480)
+            finally:app.close()
+
     def test_map_only_start_shows_status_in_game_before_map_pack_download(self):
         with tempfile.TemporaryDirectory() as directory,patch('map_setup_panel.maps_ready',return_value=False),patch('sanctum_panel.game_is_foreground',return_value=False):
             app=App(directory,hotkeys=False)

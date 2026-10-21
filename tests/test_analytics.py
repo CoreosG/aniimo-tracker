@@ -8,6 +8,51 @@ from tracker_core import Ledger
 
 
 class AnalyticsTests(unittest.TestCase):
+    def test_export_keeps_unknown_values_blank_and_does_not_export_unselected_runs(self):
+        import csv
+        from analytics import build_report, export_runs_csv
+        with tempfile.TemporaryDirectory() as folder:
+            ledger=Ledger(Path(folder)/'runs.db')
+            ledger.record_run(points=200,money=999999,day='2026-10-01')
+            ledger.record_run(points=-140,day='2026-10-20')
+            ledger.record_run(points=180,money=0,day='2026-10-20')
+            report=build_report(ledger,days=1,today=date(2026,10,20))
+            path=Path(folder)/'report.csv'
+            export_runs_csv(report,path)
+            with path.open(encoding='utf-8-sig',newline='') as stream:
+                rows=list(csv.DictReader(stream))
+            self.assertEqual(len(rows),2)
+            self.assertEqual([row['loot_value'] for row in rows],['0',''])
+            self.assertEqual([row['points'] for row in rows],['180','-140'])
+            self.assertEqual(rows[1]['modeled_margin_not_cash_profit'],'')
+            self.assertEqual(report['performance']['known_ticketed_loot'],1)
+
+    def test_performance_uses_known_ticketed_loot_and_estimated_time_not_cash_profit(self):
+        from analytics import build_report
+        with tempfile.TemporaryDirectory() as folder:
+            ledger=Ledger(Path(folder)/'runs.db')
+            ledger.configure(daily_tickets=1,gear_slots=0,solo_keys=0,run_minutes=12,extra_minutes=3)
+            first=ledger.record_run(points=200,money=500000,day='2026-10-20')
+            ledger.record_run(points=-140,money=100000,day='2026-10-20')
+            ledger.record_run(points=180,day='2026-10-20')
+            ledger.record_run(points=50,money=900000,consumes_ticket=False,day='2026-10-20')
+            before=ledger.summary()
+            report=build_report(ledger,days=1,today=date(2026,10,20))
+            performance=report['performance']
+            self.assertEqual(performance['ticketed_runs'],3)
+            self.assertEqual(performance['known_ticketed_loot'],2)
+            self.assertEqual(performance['estimated_minutes'],45)
+            self.assertEqual(performance['average_loot'],300000)
+            self.assertEqual(performance['loot_per_hour'],1200000)
+            self.assertEqual(performance['planned_cost_per_run'],20000)
+            self.assertEqual(performance['average_modeled_margin'],280000)
+            self.assertEqual(performance['median_points'],190)
+            self.assertEqual(performance['points_per_hour'],320)
+            row=next(row for row in report['runs'] if row['id']==first)
+            self.assertEqual((row['modeled_cost'],row['modeled_margin']),(20000,480000))
+            self.assertIsNone(report['runs'][0]['modeled_margin'])
+            self.assertEqual(ledger.summary(),before)
+
     def test_filters_include_buy_only_days_and_empty_periods_have_no_invented_loot(self):
         from analytics import build_report
         with tempfile.TemporaryDirectory() as folder:

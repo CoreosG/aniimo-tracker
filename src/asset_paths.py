@@ -11,7 +11,7 @@ ASSETS=Path(os.environ['ANIIMO_MAP_ASSETS']) if os.environ.get('ANIIMO_MAP_ASSET
     if getattr(sys,'frozen',False) else BUNDLED)
 if ASSETS!=BUNDLED:
     ASSETS.mkdir(parents=True,exist_ok=True)
-    for name in ('blue.png','orange.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json'):
+    for name in ('blue.png','orange.png','orange-full.png','player.png','map-zoom-minus.png','map-zoom-plus.png','maps.json'):
         if not (ASSETS/name).exists():shutil.copyfile(BUNDLED/name,ASSETS/name)
 
 

@@ -18,3 +18,15 @@ A saved run and a shared navigation session are separate concepts. Shared sessio
 Only the host can change shared difficulty. Any member can explicitly announce a new shared run. Epoch and layout revisions reject stale position packets; stronger client-reported evidence replaces weaker layout evidence. Screenshots, OCR and financial calculations never go through the relay.
 
 The default public relay runs separately from the desktop program. See [deployment](../server/README.md), [capacity notes](../server/CAPACITY.md), and the [domain vocabulary](../CONTEXT.md).
+
+`budget_panel.py` owns the compact budget presentation while `tracker_core.break_even`
+remains the calculation interface. `analytics.build_report` returns both chart data
+and filtered run comparisons; CSV export consumes that same report. Historical
+wallet observations and modeled item-value margins remain separate.
+
+Each map model caches accepted minimap bounds, not accepted positions. A new
+frame must still satisfy the original registration checks. Manual bounds take
+priority; resolution changes and repeated misses trigger discovery again.
+UI preview rendering is deferred while hidden and refreshed on return. Overlay
+slider previews are coalesced separately from persistence, and ephemeral
+positions do not cause a configuration-file write on every frame.

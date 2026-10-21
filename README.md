@@ -52,10 +52,26 @@ These are anonymized tutorial examples. Original player screenshots are not dist
 | Rank, ticket and remaining-playtime forecasts | Routes from both entrances; preferred exits |
 | Key, gear and daily ticket break-even budgets | Key doors, eggs, rich rooms or trials |
 | Loot, wallet, points and ticket graphs | Optional room icons, monsters and legend |
+| Estimated loot/hour, sortable run details and filtered CSV export | Low CPU position updates and cached minimap detection |
 | Edit historical balance checkpoints to fix outliers | Three-player parties with shared layouts and positions |
 | Keep screenshots for the latest 30 runs, or choose a limit | Movable, click-through overlay with live display previews |
 
 **Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory captures record your wallet after sales and shopping. Failed runs affect progression but stay out of the successful-run points average.
+
+### New in 0.3
+
+The break-even card shows one sales target per run, with a colored ticket/key/gear breakdown. Assumptions stay collapsed until you need them. Analytics adds Today and 90-day filters, per-run comparisons, editing and CSV export. Map controls are grouped into **Route**, **Icons**, **Overlay** and **Tools**.
+
+**Using a slower PC?** Choose **Map & routes → Overlay → Position updates → Low CPU (1.5s)**. Map identification and OCR work locally in background workers. Position tracking reuses the detected minimap area, while keeping the same geometric checks. See [performance notes](docs/PERFORMANCE.md) for measurements and limits.
+
+[What changed in 0.3.0 →](docs/CHANGELOG.md)
+
+<details>
+<summary><b>See the new analytics and budget</b></summary>
+<p>These previews use invented demo data.</p>
+<img src="assets/previews/analytics.png" width="900" alt="Analytics with estimated loot per hour, budget comparison and history charts">
+<img src="assets/previews/budget.png" width="900" alt="Compact break-even target with ticket, key and gear costs">
+</details>
 
 ## Party navigation
 

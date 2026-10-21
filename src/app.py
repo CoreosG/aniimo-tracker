@@ -30,6 +30,7 @@ from screenshot_retention import prune_screenshots
 from party_panel import PartyPanel
 from tutorial import Tutorial
 from update_checker import UpdatesPanel
+from budget_panel import BudgetPanel
 
 BG = '#0d1421'
 PANEL = '#182235'
@@ -157,6 +158,8 @@ class App(tk.Tk):
         s.configure('TCombobox', fieldbackground='#233b48', foreground=TEXT, padding=5)
         s.map('TCombobox', fieldbackground=[('readonly', '#233b48')], selectbackground=[('readonly', '#233b48')])
         s.configure('TNotebook', background=BG, borderwidth=0)
+        s.configure('TNotebook',bordercolor=BG,lightcolor=BG,darkcolor=BG)
+        s.configure('Horizontal.TScale',background='#79dcc8',troughcolor='#263a53',bordercolor=PANEL,lightcolor=PANEL,darkcolor=PANEL)
         s.configure('TNotebook.Tab', background=PANEL, padding=(12, 10))
         s.map('TNotebook.Tab', background=[('selected', '#31515e')])
         s.configure('Treeview', background=PANEL, fieldbackground=PANEL, foreground=TEXT, rowheight=30)
@@ -180,6 +183,8 @@ class App(tk.Tk):
         s.map('Chip.TRadiobutton',background=[('selected','#385770'),('active','#2e4660')])
         s.configure('TSpinbox',fieldbackground='#23344c',foreground=TEXT,padding=6)
         s.configure('Workspace.TNotebook',bordercolor=BG,lightcolor=BG,darkcolor=BG)
+        s.configure('Goal.Horizontal.TProgressbar', background=ACCENT, troughcolor='#263a53',
+                    borderwidth=0, lightcolor=ACCENT, darkcolor=ACCENT)
         s.configure('TButton',background='#24364c')
         s.map('TButton',background=[('active','#314a68')])
         for name in ('TEntry','TCombobox','TSpinbox'):
@@ -249,11 +254,13 @@ class App(tk.Tk):
         cards = ttk.Frame(self.home)
         cards.pack(fill='x')
         self.card_values = {}
+        self.stat_cards = []
         for i, (key, title) in enumerate((('rank', 'CURRENT RANK'), ('tickets', 'TICKETS ON HAND'),
                                          ('today', 'TODAY’S POINTS'), ('net', 'COIN BALANCE'))):
             cards.columnconfigure(i, weight=1, uniform='cards')
             card = ttk.Frame(cards, style='Panel.TFrame', padding=14)
             card.grid(row=0, column=i, sticky='nsew', padx=(0 if i == 0 else 8, 0))
+            self.stat_cards.append(card)
             ttk.Label(card, text=title, style='Panel.TLabel', foreground=MUTED,
                       font=('Segoe UI', 9)).pack(anchor='w')
             var = tk.StringVar()
@@ -268,16 +275,41 @@ class App(tk.Tk):
                 self.free_tickets_button.pack(side='left')
             elif key == 'rank':
                 ttk.Button(card, text='Correct stats', style='Card.TButton', command=self.correct_stats_dialog).pack(anchor='w', pady=(8, 0))
+            elif key == 'net':
+                self.balance_source_text=tk.StringVar()
+                ttk.Label(card,textvariable=self.balance_source_text,style='Panel.TLabel',
+                          foreground=MUTED,font=('Segoe UI',9)).pack(anchor='w',pady=(8,0))
+        def arrange_cards(event):
+            columns = 2 if event.width < 800 else 4
+            for column in range(4):
+                cards.columnconfigure(column, weight=1 if column < columns else 0,
+                                      uniform='cards' if column < columns else '')
+            for index, card in enumerate(self.stat_cards):
+                row, column = divmod(index, columns)
+                card.grid(row=row, column=column, padx=(0 if column == 0 else 8, 0),
+                          pady=(0 if row == 0 else 8, 0))
+        cards.bind('<Configure>', arrange_cards)
         self.forecast_text = tk.StringVar()
-        ttk.Label(self.home, textvariable=self.forecast_text, foreground=ACCENT,
-                  font=('Segoe UI Semibold', 11), wraplength=1000).pack(anchor='w', pady=(16, 5))
+        self.goal_summary=ttk.Frame(self.home,style='Panel.TFrame',padding=(14,12))
+        self.goal_summary.pack(fill='x',pady=(12,14))
+        ttk.Label(self.goal_summary,text='GOAL ESTIMATE',style='Panel.TLabel',foreground=MUTED,
+                  font=('Segoe UI Semibold',9)).pack(anchor='w',pady=(0,5))
+        ttk.Label(self.goal_summary, textvariable=self.forecast_text, foreground=ACCENT,
+                  style='Panel.TLabel',font=('Segoe UI Semibold', 11), wraplength=900).pack(anchor='w')
+        self.goal_progress=ttk.Progressbar(self.goal_summary,style='Goal.Horizontal.TProgressbar',maximum=100)
+        self.goal_progress.pack(fill='x',pady=(8,7))
         self.playtime_text = tk.StringVar()
-        ttk.Label(self.home, textvariable=self.playtime_text, font=('Segoe UI Semibold', 11),
-                  wraplength=1000).pack(anchor='w', pady=(0, 8))
+        self.goal_time_label=ttk.Label(self.goal_summary, textvariable=self.playtime_text,
+                  style='Panel.TLabel',wraplength=900)
+        self.goal_time_label.pack(anchor='w')
+        self.goal_details=self.disclosure(self.goal_summary,'Estimate details')
+        self.goal_details_text=tk.StringVar()
+        self.goal_details_label=ttk.Label(self.goal_details,textvariable=self.goal_details_text,
+                  style='Panel.TLabel',foreground=MUTED,wraplength=700,justify='left')
+        self.goal_details_label.pack(anchor='w')
+        self.goal_summary.bind('<Configure>',lambda event:[child.configure(wraplength=max(260,event.width-28))
+            for child in self.goal_summary.winfo_children() if isinstance(child,ttk.Label)])
         self.budget_text = tk.StringVar()
-        planning=self.disclosure(self.home,'Goal & break-even budget')
-        ttk.Label(planning, textvariable=self.budget_text, style='Muted.TLabel',
-                  wraplength=1000).pack(anchor='w', pady=(0, 14))
         start_actions=ttk.Frame(self.home);start_actions.pack(fill='x')
         self.capture_button=ttk.Button(start_actions,text=f'Capture screen · {self.shortcut_hint("capture")}',style='Accent.TButton',command=lambda:self.capture_image('auto',from_button=True))
         self.capture_button.pack(side='left')
@@ -311,6 +343,8 @@ class App(tk.Tk):
         self.save_run_button=ttk.Button(self.home,text='Save run',style='Accent.TButton',command=self.save_run)
         self.save_run_button.pack(anchor='w',pady=(14,8))
         ttk.Label(self.home,text='Loot value is tracked separately from your actual coin balance.',style='Muted.TLabel').pack(anchor='w',pady=(0,10))
+        self.budget_panel=BudgetPanel(self.home,self.open_budget_settings)
+        self.budget_panel.pack(fill='x',pady=(6,12))
         self.more_options=self.disclosure(self.home,'More options')
         options=self.more_options
         maintenance=ttk.Frame(options);maintenance.pack(fill='x',pady=8)
@@ -339,6 +373,11 @@ class App(tk.Tk):
                 ttk.Button(tools,text=label,command=action).pack(side='left',padx=4)
         ttk.Button(options,text='Clear result draft',command=self.clear_draft).pack(side='left',pady=8)
         ttk.Button(options,text='Show OCR text',command=self.show_ocr).pack(side='left',padx=8,pady=8)
+
+    def open_budget_settings(self):
+        self.settings_section.set('Goals & budget')
+        self.show_settings_section()
+        self.tabs.select(self.settings_tab.master.master)
 
     def disclosure(self,parent,title):
         button=ttk.Button(parent,text=title+' ▸')
@@ -543,12 +582,12 @@ class App(tk.Tk):
 1. Keep the tracker open or minimized while you play Aniimo on DISPLAY1.
 2. Start run accepts a manually entered Balance (optional); leave it blank if unknown. Or capture Inventory with Ctrl+Shift+F8 to start with an observed balance. An unrecognized automatic capture starts without a balance if no run or unsaved result exists. The overlay header says Waiting for map until a full map confirms the layout. No ticket is consumed yet. For just the map, use Map > Start map tracker without creating a run.
 3. Enter Chaos and open M once with both portals visible. After the full map is recognized, close M; the overlay follows the minimap. Lobby minimap matches cannot select a layout. The same Capture screen action can read an open M map or resume an already confirmed map from gameplay.
-4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish, then hides the overlay. Toggle this information in Map > Display & advanced. All shortcuts can be changed in Settings.
+4. At the end, capture points with Ctrl+Shift+F8 or type them. Loot is optional: type/capture it if known, or leave blank. Blank loot is Unknown, not zero. Quick successive captures are queued. The overlay can show loot/points readings and the Save ready run shortcut (Ctrl+Shift+F9 by default); it saves only valid results after all readings finish, then hides the overlay. Toggle this information in Map > Overlay. All shortcuts can be changed in Settings.
 5. Check the points and click Save run. This also works with no recorded start or screenshots. Points and one ticket are counted once; loot value never adds cash.
 
-Map & routes uses one Pause map / Resume map toggle in both tracked-run and map-only modes. The same configurable Toggle map tracking shortcut does both. Without a run, Start map tracker begins map-only mode: inventory/results are ignored and no run is logged. Display & advanced > Stop map-only session exits that mode, or Start run explicitly switches into run logging. Pause preserves the detected layout. Every game-map key press requests a fresh full-map check before minimap following. Unknown screenshots do not change stats.
+Map & routes uses one Pause map / Resume map toggle in both tracked-run and map-only modes. The same configurable Toggle map tracking shortcut does both. Without a run, Start map tracker begins map-only mode: inventory/results are ignored and no run is logged. Map & routes > Stop map-only session exits that mode, or Start run explicitly switches into run logging. Pause preserves the detected layout. Every game-map key press requests a fresh full-map check before minimap following. Unknown screenshots do not change stats.
 The Tickets on hand card has Buy tickets (log an actual purchase) and Free tickets (chest/reward receipts). Free tickets do not charge coins or use daily paid shop slots. Both update stock and forecasts immediately; free-ticket receipts remain in that dialog's history. Correct stats is directly under Current rank.
-More options contains optional spending, manual inputs, image imports, reading areas and cancel-start controls. Map & routes puts difficulty, route goals and icon switches beside the preview. Display & advanced contains overlay controls, calibration and the optional local simulator.
+More options contains optional spending, manual inputs, image imports, reading areas and cancel-start controls. Map & routes puts difficulty, route goals and icon switches beside the preview. Choose Route, Icons, Overlay or Tools in the map sidebar. Overlay contains display controls and Tools contains calibration and the optional simulator.
 For history already reflected in your stats, check Already included in current stats under More options. The supplied 431,719-loot / 192-point example is included this way. Cancel mistaken run start and Clear result draft are also under More options.
 
 LOCAL TEXT RECOGNITION
@@ -568,7 +607,7 @@ Run loot value is not cash income. You can keep items, sell them later, or recei
 
 Forecasts assume you buy the configured daily tickets and use your stockpile. They assume you can afford the purchases. Logged point changes are used exactly: 400 adds 400 and -140 loses 140. Once you have logged successful Chaos runs, the forecast uses their actual average, including daily bonuses, and adds no further daily bonus. Failed runs still change rank progress and ticket stock, but are excluded from average points per successful run. Before any successful Chaos runs, expected normal and first-daily awards are used. Early averages can be noisy. Non-ticket runs do not train the Chaos average.
 Failed run is beside the Points field. Check it and enter points lost as a positive amount (140), or enter -140 directly. Enter 0 with Failed run checked for a zero-point failure. Save run records the result and ticket use once. Run history marks failed results and lets you edit their loss or outcome. A failure never fabricates a loot value or credits cash; optional loot remains separate. Already included in current stats and newer authoritative corrections still take priority.
-Overview estimates playtime as remaining runs times 12 minutes by default: a 15-minute run ending with 3 minutes left. Change Minutes in each run and optional Extra minutes per run in Settings to account for queues, buying or selling. Goal & break-even budget also shows the same run count at the full 15-minute timer. Daily time is an average over every calendar day until the deadline; skipped days mean more time on the days you play. Estimates update after saved/edited runs and stat corrections; they are not measured playtime.
+Overview estimates playtime as remaining runs times 12 minutes by default: a 15-minute run ending with 3 minutes left. Change Minutes in each run and optional Extra minutes per run in Settings to account for queues, buying or selling. Estimate details also shows the same run count at the full 15-minute timer. Daily time is an average over every calendar day until the deadline; skipped days mean more time on the days you play. Estimates update after saved/edited runs and stat corrections; they are not measured playtime.
 
 RESEARCH · CHECKED OCTOBER 18, 2026
 
@@ -581,7 +620,7 @@ The dashboard break-even budget includes ticket purchases, keys, and replacement
 DATA AND RECOVERY
 
 Run history > Edit selected run (or double-click a row) corrects points, optional loot, expenses, date, notes and counting options. Save changes keeps the same entry and screenshots without ending an ongoing run. Blank loot means Unknown. Edits recalculate totals and forecasts, but newer authoritative stat corrections take priority over older results.
-Analytics shows loot/logged costs, wallet checkpoints, points and tickets for 7 days, 30 days or All time. Hover for exact values. Starting balance supplies a wallet checkpoint after your sales and shopping. Checkpoint changes include all intervening sales and spending, not individual run profit. Unknown loot stays missing. Hollow wallet dots are estimates; Wallet now always shows the latest all-time value. Failed runs do not train successful-run averages.
+Analytics shows loot/logged costs, wallet checkpoints, points and tickets for Today, 7, 30 or 90 days, or All time. Run details supports sorting, editing and CSV export for the selected period. Estimated loot/hour uses configured run time; loot minus planned cost is an item-value comparison, not cash profit. Hover for exact values. Starting balance supplies a wallet checkpoint after your sales and shopping. Checkpoint changes include all intervening sales and spending, not individual run profit. Unknown loot stays missing. Hollow wallet dots are estimates; Wallet now always shows the latest all-time value. Failed runs do not train successful-run averages.
 All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db and screenshots) to keep everything. Drafts and active starts survive restarts. CSV exports include screenshot paths. Balance observations and corrections are available in history. Deleting a run undoes progress only when that progress was added after the latest authoritative correction; it never changes an observed balance. Close the tracker to release its shortcuts.
 ''')
         text.insert('end','\n\nSCREENSHOT STORAGE\n\nSettings > Screenshot storage keeps images for the last 30 saved runs by default. Change the limit and Apply screenshot limit; 0 keeps no saved-run screenshots. Older result and starting-balance images are deleted automatically. History, stats, notes, active-run screenshots and the current draft remain. Unused tracker captures are cleaned up too. Increasing the limit cannot restore deleted images; exported paths may refer to expired screenshots.\n')
@@ -604,39 +643,39 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         for key, value in dict(rank=f"{state['rank']:,}", tickets=str(state['tickets']),
                                 today=f"{state['today_points']:,}", net=('≈ ' if state['coins_approximate'] else '') + f"{state['coins']:,}").items():
             self.card_values[key].set(value)
+        self.balance_source_text.set('Estimated since last check' if state['coins_estimated'] else 'Latest observed balance')
         if not state['remaining']:
             line = 'Goal reached!'
         elif plan['reachable']:
-            line = f"On track · projected {plan['finish']:%b %d} · {plan['needed_tickets']:,} more runs estimated · {plan['margin']:,} ticket margin"
+            line = f"On track · rank {s['target']:,} by {plan['finish']:%b %d} · {plan['needed_tickets']:,} runs left"
         else:
-            line = f"Below target at this pace · {state['remaining']:,} points remain · projected capacity {plan['points']:,} points by deadline"
+            line = f"Below target at this pace · {state['remaining']:,} points left · adjust goal settings"
         self.forecast_text.set(line)
+        goal_points=max(1,s['target']*s['points_per_rank'])
+        self.goal_progress.configure(value=max(0,min(100,100*(1-state['remaining']/goal_points))))
         if not state['remaining']:
             time_line = 'Goal reached · 0 min of playtime remaining'
         elif plan['play_minutes'] is None:
             time_line = 'Playtime estimate unavailable · successful-run points per run must be positive'
         else:
-            time_line = (f"Estimated playtime to rank {s['target']:,}: {self.duration(plan['play_minutes'])}"
-                         f" · {plan['needed_tickets']:,} runs at {s['run_minutes']} min/run")
-            if s['extra_minutes']:
-                time_line += f"\nIncluding {s['extra_minutes']} extra min/run: {self.duration(plan['session_minutes'])} total"
+            time_line = f"Estimated playtime: {self.duration(plan['session_minutes'])} left"
             if plan['daily_session_minutes'] is not None:
-                time_line += f" · ≈ {self.duration(plan['daily_session_minutes'])}/day until deadline (every calendar day)"
+                time_line += f" · ≈ {self.duration(plan['daily_session_minutes'])}/calendar day"
             else:
                 time_line += ' · deadline has passed'
+        time_line += f" · {plan['days']} days left"
         self.playtime_text.set(time_line)
         runs = self.ledger.runs()
         budget=break_even(s)
-        target=(f"{budget['per_run']:,.0f}/run" if budget['per_run'] is not None else 'no planned runs')
-        self.budget_text.set(f"{plan['days']} game days left · {state['rank_points']}/{s['points_per_rank']} into rank · "
-            f"{state['normal']:.1f} avg points/successful run" +
-            (f" · lifetime {state['lifetime_points']:,}" if state['lifetime_points'] is not None else '') +
-            f"\n{s['daily_tickets']} tickets/day: {plan['daily_cost']:,} coins · {'party' if s['budget_party'] else 'solo'} break-even ≈ {target} incl. keys + gear"+
-            f"\n{budget['weekly_runs']} runs/week · gear budget {budget['weekly_gear']:,}/week (weekly discounts included) · "+
-            ('balance estimated since last observation' if state['coins_estimated'] else 'balance from latest observation')+
-            ('\nAt the full 15-minute timer: '+self.duration(plan['full_run_minutes'])+' in runs for the same estimated run count.'
+        self.budget_panel.update_budget(s,budget)
+        self.budget_text.set(self.budget_panel.details.get())
+        self.goal_details_text.set(
+            f"Deadline: {s['deadline']} · {state['rank_points']}/{s['points_per_rank']} points into current rank\n"
+            f"{state['normal']:.1f} avg points/successful run · {plan['margin']:,} ticket margin\n"
+            f"{s['run_minutes']} min/run + {s['extra_minutes']} extra min/run · daily time averages every calendar day.\n"+
+            (f"Full 15-minute timer: {self.duration(plan['full_run_minutes'])} in runs.\n"
              if plan['full_run_minutes'] is not None else '')+
-            ('\nPlaytime excludes queues, buying and selling. Add extra minutes per run in Settings.' if not s['extra_minutes'] else ''))
+            'Assumes daily ticket purchases are affordable. Skipped play days require more time on other days.')
         self.tree.delete(*self.tree.get_children())
         for run in runs:
             self.tree.insert('', 'end', iid=str(run['id']), values=(run['day'], run['points'],
@@ -653,7 +692,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 'inventory balance '+('≈ ' if active['approximate'] else '')+f"{active['balance']:,} · loot results will not add cash")
             self.run_info.set(f"Run started {active['timestamp']} · "+balance_info)
         else:
-            self.run_info.set('Map-only mode · Start run to log a tracked run, or use Display & advanced > Stop map-only session for direct result entry.' if self.sanctum.session.standalone else
+            self.run_info.set('Map-only mode · Start run to log a tracked run, or use Map & routes > Stop map-only session for direct result entry.' if self.sanctum.session.standalone else
                 'No run active. Start run accepts a manual balance or a blank balance. You can also enter points directly below.')
         self.update_run_status()
 
@@ -850,7 +889,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 self.status.set('The run changed while reading this screenshot. Capture it again if needed.')
                 continue
             if self.sanctum.session.standalone and kind in ('balance','money','points'):
-                self.status.set('Map-only mode: inventory/results are ignored. Start a run, or stop the map-only session under Display & advanced, to log results.')
+                self.status.set('Map-only mode: inventory/results are ignored. Start a run, or stop the map-only session in Map & routes, to log results.')
                 continue
             if kind in ('money','points','balance'):
                 if kind=='balance' and self.ledger.active_start():
@@ -1120,7 +1159,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
 
     def save_run(self,quiet=False):
         if self.sanctum.session.standalone:
-            self.status.set('Map-only mode does not log results. Use Display & advanced > Stop map-only session, then save your points.')
+            self.status.set('Map-only mode does not log results. Use Map & routes > Stop map-only session, then save your points.')
             return
         if self.auto_busy or self.auto_pending or self.busy_capture or self.pending_ocr:
             self.status.set('Still reading your screenshot. Save when the readings are ready.')

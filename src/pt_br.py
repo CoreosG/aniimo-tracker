@@ -1,5 +1,72 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Selected display is disconnected; choose a display in Settings.|O monitor selecionado foi desconectado; escolha outro nas Configurações.
+Today|Hoje
+90 days|90 dias
+Loot value ≠ cash balance|Valor do saque ≠ saldo em dinheiro
+Export this period|Exportar período
+ESTIMATED LOOT / HOUR|SAQUE ESTIMADO / HORA
+LOOT MINUS PLANNED COST|SAQUE MENOS CUSTO PREVISTO
+Charts|Gráficos
+Run details|Detalhes das partidas
+Select a result to correct it. Unknown loot stays blank in CSV.|Selecione um resultado para corrigir. Saque desconhecido fica em branco no CSV.
+Game day|Dia do jogo
+Vs. planned cost|Menos custo previsto
+Result|Resultado
+Planned cost uses your current budget settings. This comparison is not cash profit.|O custo previsto usa suas configurações atuais. Esta comparação não é lucro em dinheiro.
+ticketed runs with loot|partidas com ingresso e saque registrado
+min/run incl. extras|min/partida com extras
+Budget|Orçamento
+item value, not cash profit|valor de itens, não lucro em dinheiro
+Set planned runs in Settings to compare costs|Defina partidas planejadas nas Configurações para comparar custos
+Estimated time:|Tempo estimado:
+Exported|Exportados
+run results|resultados de partidas
+Export failed|Falha na exportação
+Success|Sucesso
+Bonus|Bônus
+BREAK-EVEN ESTIMATE|CUSTO ESTIMADO POR PARTIDA
+Adjust budget|Ajustar orçamento
+coins to sell per run|moedas em vendas por partida
+Planning assumptions|Premissas do cálculo
+Tickets bought every day:|Ingressos comprados todos os dias:
+coins/day.|moedas/dia.
+Gear lasts|Equipamento dura
+runs; weekly discounts included.|partidas; com descontos semanais.
+Total budget:|Orçamento total:
+coins/week.|moedas/semana.
+Sell enough loot to cover this target. Unsold loot is not cash.|Venda saque suficiente para cobrir a meta. Saque não vendido não é dinheiro.
+Planning only · no automatic wallet deductions.|Só planejamento · sem deduções automáticas do saldo.
+No planned runs. Set tickets per day or runs per play day in Adjust budget.|Nenhuma partida planejada. Defina ingressos por dia ou partidas por dia em Ajustar orçamento.
+GOAL ESTIMATE|ESTIMATIVA DA META
+Estimate details|Detalhes da estimativa
+Estimated since last check|Estimado desde a última leitura
+Latest observed balance|Último saldo observado
+runs left|partidas restantes
+points left|pontos restantes
+adjust goal settings|ajuste a meta nas configurações
+Estimated playtime:|Tempo de jogo estimado:
+/calendar day|/dia corrido
+days left|dias restantes
+Deadline:|Prazo:
+points into current rank|pontos no ranque atual
+avg points/successful run|pontos médios/partida vencida
+ticket margin|ingressos de folga
+extra min/run|min extras/partida
+daily time averages every calendar day.|média diária inclui todos os dias corridos.
+Full 15-minute timer:|Limite completo de 15 minutos:
+in runs.|em partidas.
+Assumes daily ticket purchases are affordable. Skipped play days require more time on other days.|Pressupõe saldo para comprar ingressos diariamente. Dias sem jogar exigem mais tempo nos outros dias.
+Route|Rota
+Icons|Ícones
+Overlay|Sobreposição
+Tools|Ferramentas
+OVERLAY DISPLAY|EXIBIÇÃO DA SOBREPOSIÇÃO
+TOOLS & CALIBRATION|FERRAMENTAS E CALIBRAÇÃO
+Reset overlay position|Redefinir posição da sobreposição
+Position updates|Atualização da posição
+Normal (0.7s)|Normal (0,7 s)
+Low CPU (1.5s)|Poupar CPU (1,5 s)
 Warn about unfinished runs|Avisar sobre partidas não finalizadas
 New party run detected · map updated. Your previous run is unfinished.|Nova partida do grupo detectada · mapa atualizado. Sua partida anterior não foi finalizada.
 previous run unfinished|partida anterior não finalizada
@@ -158,8 +225,8 @@ Map tracker only · open the game map inside |Só acompanhamento · abra o mapa 
 . No run or stats are recorded.|. Nenhuma partida ou dado será registrado.
 Run active. Open the game map inside Chaos once to confirm it; lobby minimaps cannot start the overlay.|Partida ativa. Abra o mapa dentro do Caos uma vez para confirmar; minimapas no lobby não ativam a sobreposição.
 Minimap does not match the confirmed layout. Open the game map to confirm it.|O minimapa não corresponde à variante confirmada. Abra o mapa do jogo para confirmar.
-Map-only mode: inventory/results are ignored. Start a run, or stop the map-only session under Display & advanced, to log results.|Modo só de mapa: inventário e resultados são ignorados. Inicie uma partida ou encerre a sessão em Exibição e opções avançadas para registrar resultados.
-Map-only mode · Start run to log a tracked run, or use Display & advanced > Stop map-only session for direct result entry.|Modo só de mapa · Inicie uma partida ou use Exibição e opções avançadas > Encerrar sessão só de mapa para informar um resultado diretamente.
+Map-only mode: inventory/results are ignored. Start a run, or stop the map-only session in Map & routes, to log results.|Modo só de mapa: inventário e resultados são ignorados. Inicie uma partida ou encerre a sessão em Mapa e rotas para registrar resultados.
+Map-only mode · Start run to log a tracked run, or use Map & routes > Stop map-only session for direct result entry.|Modo só de mapa · Inicie uma partida ou use Mapa e rotas > Encerrar sessão só de mapa para informar um resultado diretamente.
 Map-only tracking · the same Map button pauses/resumes. No run stats are recorded.|Só acompanhamento do mapa · o mesmo botão pausa e retoma. Nenhum resultado é registrado.
 Points ready · loot is optional. Save run whenever you are finished.|Pontos prontos · o saque é opcional. Salve a partida quando terminar.
 No spending entered · leave blank if you bought nothing|Nenhum gasto informado · deixe vazio se não comprou nada
@@ -429,7 +496,7 @@ Tracking resumed on the same run. Open the game map once if the layout needs rea
 Run active · watch armed. Open the game map with both portals visible.|Partida ativa · acompanhamento pronto. Abra o mapa com os dois portais visíveis.
 Run active · tracking paused. Click Resume map.|Partida ativa · acompanhamento pausado. Clique em Retomar mapa.
 No active run · start a run or start the map tracker.|Nenhuma partida ativa · inicie uma partida ou o acompanhamento do mapa.
-Map-only mode does not log results. Use Display & advanced > Stop map-only session, then save your points.|O modo só de mapa não registra resultados. Use Exibição e opções avançadas > Encerrar sessão só de mapa e salve seus pontos.
+Map-only mode does not log results. Use Map & routes > Stop map-only session, then save your points.|O modo só de mapa não registra resultados. Use Mapa e rotas > Encerrar sessão só de mapa e salve seus pontos.
 Run started without balance · wallet unchanged · open the game map inside Chaos to track|Partida iniciada sem saldo · carteira preservada · abra o mapa dentro do Caos para acompanhar
 Run started without balance · screen unrecognized · waiting for map|Partida iniciada sem saldo · tela não reconhecida · aguardando mapa
 Screen unrecognized · current run and stats unchanged|Tela não reconhecida · partida e dados atuais preservados
@@ -704,13 +771,13 @@ Corrigir dados atuais ajusta ranque, progresso, tickets e saldo sem apagar o his
 
 MAPA E SOBREPOSIÇÃO
 
-Iniciar acompanhamento do mapa permite usar só o mapa, sem registrar partidas, saldo ou resultados. Pausar mapa e Retomar mapa usam o mesmo botão e atalho. Pausar mantém a variante detectada. Para sair do modo só de mapa, use Exibição e opções avançadas > Encerrar sessão só de mapa, ou inicie uma partida.
+Iniciar acompanhamento do mapa permite usar só o mapa, sem registrar partidas, saldo ou resultados. Pausar mapa e Retomar mapa usam o mesmo botão e atalho. Pausar mantém a variante detectada. Para sair do modo só de mapa, use Mapa e rotas > Encerrar sessão só de mapa, ou inicie uma partida.
 
 As dificuldades Iniciante e Difícil têm seus próprios mapas. Pesadelo e Caos compartilham sete variantes. A dificuldade selecionada só altera o reconhecimento e o planejamento, não a dificuldade dentro do jogo.
 
 As duas rotas são alternativas independentes: laranja contínuo começa no portal laranja; azul tracejado começa no portal azul. Cada rota procura cumprir a quantidade de salas com chave e/ou ninhos solicitada e terminar na saída mais próxima. Ninhos indicam locais possíveis de ovos. Os ícones de portas, ovos, desafios e baús podem ser mostrados separadamente. Desafios não confirmados ficam ocultos por padrão e aparecem com ? quando habilitados.
 
-Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Exibição e opções avançadas. Atalhos podem ser alterados nas Configurações sem reiniciar.
+Mostrar sobreposição controla a visibilidade sem encerrar a partida. Mover sobreposição permite arrastá-la; Fixar sobreposição devolve os cliques ao jogo. A posição é salva. O marcador VOCÊ fica ciano com uma posição recente e dourado na última posição conhecida. A barra de captura pode ser desativada em Mapa e rotas. Atalhos podem ser alterados nas Configurações sem reiniciar.
 
 CAPTURA E LEITURA DE TEXTO
 
