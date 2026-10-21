@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 from app import App
 from party_client import PartyClient
+from map_engine import MapEngine
+from tests.test_minimap_recognition import hud
 
 
 class PartyNavigationTests(unittest.TestCase):
@@ -56,6 +58,20 @@ class PartyNavigationTests(unittest.TestCase):
     def confirm(self,epoch,layout,score):
         self.host.publish(dict(type='update',epoch=epoch,evidence=dict(layout=layout,confidence=score)))
         self.until(lambda:self.app.sanctum.engine is not None and self.app.sanctum.engine.layout==layout and self.app.party.state['epoch']==epoch)
+
+    def test_minimap_identified_before_join_is_shared_without_opening_M(self):
+        panel=self.app.sanctum
+        self.app.ledger.configure(capture_target='monitor');panel.watch_action()
+        frame=hud(MapEngine(37).reference,(350,600))
+        with patch('sanctum_panel.capture_image',return_value=frame),patch('sanctum_panel.capture_bounds',return_value=(0,0,1280,720)):
+            for _ in range(3):
+                panel.scan();self.until(lambda:not panel.busy);time.sleep(.4)
+        self.assertTrue(panel.session.map_confirmed)
+        party=self.app.party
+        party.mode.set('custom');party.address.set(self.url);party.code.set(self.host_state['code']);party.connect(join=True)
+        self.until(lambda:self.host_state['layout']==37)
+        self.assertEqual(self.host_state['confidence'],.8)
+        self.assertIsNone(self.app.ledger.active_start())
 
     def test_warning_waits_for_new_run_and_confirmed_map_even_when_the_layout_repeats(self):
         self.join();self.app.fields['points'].set('192')

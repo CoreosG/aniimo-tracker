@@ -47,6 +47,7 @@ class MinimapRecognitionTests(unittest.TestCase):
         matcher=MinimapRecognizer({32:reference,39:floor_plan(True)})
         for i in range(3):reading=matcher.observe(hud(reference,(315,335)),now=i*.8)
         self.assertEqual(evidence_score(reading),.8)
+        self.assertEqual(evidence_score(reading,39),0,'A reading cannot be reused for another layout')
         portals=dict(map_screen=True,candidates=[39],scores=dict(orange=.95,blue=.94))
         self.assertGreater(evidence_score(portals),evidence_score(reading))
         self.assertEqual(evidence_score({**reading,'streak':1}),0)

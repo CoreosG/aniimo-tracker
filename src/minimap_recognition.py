@@ -21,6 +21,7 @@ class MinimapRecognizer:
     a layout by itself. The instance belongs to one navigation context.
     """
     def __init__(self,references,outdoor=None):
+        cv2.setNumThreads(2)
         self.references=references
         self.outdoor=outdoor
         self.outdoor_pixels=None

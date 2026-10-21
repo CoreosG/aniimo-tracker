@@ -8,6 +8,7 @@ from map_engine import MapEngine
 from tests.test_minimap_recognition import hud
 from tests.test_portal_occlusion import entry_map
 from PIL import Image
+from party_protocol import evidence_score
 
 
 class AutomaticNavigationTests(unittest.TestCase):
@@ -65,6 +66,7 @@ class AutomaticNavigationTests(unittest.TestCase):
                     time.sleep(.4)
                 self.assertTrue(panel.session.map_confirmed,panel.status.get())
                 self.assertEqual(panel.engine.layout,37)
+                self.assertEqual(evidence_score(panel.last_reading),.8,'A later party connection must be able to share local recognition')
                 self.assertIsNotNone(panel.player)
                 self.assertIsNone(app.ledger.active_start())
                 self.assertTrue(panel.session.standalone)

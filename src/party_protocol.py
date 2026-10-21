@@ -27,7 +27,10 @@ def username(value):
     return value
 
 
-def evidence_score(reading):
+def evidence_score(reading,layout=None):
+    if layout is not None:
+        observed=reading.get('layout') if reading.get('method')=='temporal-corridors' else next(iter(reading.get('candidates',[])),None)
+        if observed!=layout:return 0.
     if reading.get('kind')=='match' and reading.get('method')=='temporal-corridors':
         values=[reading.get('confidence'),reading.get('margin'),reading.get('streak')]
         if any(type(n) not in (int,float) or not math.isfinite(n) for n in values):return 0.

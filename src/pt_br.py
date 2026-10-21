@@ -885,6 +885,7 @@ Em Configurações > Armazenamento de capturas, escolha quantas partidas devem m
 PT_BR['Start run / capture']='Iniciar partida / capturar'
 
 PT_BR.update({
+    'Waiting for map · ':'Aguardando mapa · ',
     'Update map pack to enable automatic minimap identification. Existing M recognition still works.':'Atualize os mapas para identificar pelo minimapa. O reconhecimento com M continua funcionando.',
     'Update map pack for automatic minimap recognition · ':'Atualize os mapas para identificar pelo minimapa · ',
     ' still works':' continua funcionando',

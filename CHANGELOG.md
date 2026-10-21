@@ -22,6 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Hide dungeon navigation after outdoor detection without changing run records.
 - Credit MOANIIMO for the detection approach; update English/PT-BR help.
 
+### Fixed
+
+- Retain local recognition for parties joined after identification, without
+  reusing evidence for another layout or echoing received party evidence.
+
 ## [0.3.4] - 2026-10-21
 
 ### Added

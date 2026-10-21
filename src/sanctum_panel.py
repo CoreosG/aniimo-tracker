@@ -22,6 +22,7 @@ from map_overlay import MapOverlay
 from shortcut_keys import ObservedKeyTaps
 from map_catalog import DIFFICULTIES,layouts_for
 from i18n import tr
+from party_protocol import evidence_score
 
 
 def app_is_foreground():
@@ -552,6 +553,8 @@ class SanctumPanel:
                         self.position_time=now
                         self.map_feedback=f'{self.difficulty.get()} {self.engine.layout} · Minimap confirmed'
                         self.status.set(self.map_feedback)
+                    elif automatic.get('kind')=='match' and self.engine and automatic['layout']==self.engine.layout:
+                        self.remember_evidence(self.engine.layout,automatic)
                     elif not self.session.map_confirmed:
                         self.status.set(automatic.get('reason','Comparing corridors'))
                 if not self.session.can_track_minimap:
@@ -936,10 +939,15 @@ class SanctumPanel:
         if reading.get('reference_position') is not None:position=self.engine.position_from_reference(reading['reference_position'])
         if position:
             self.player=position;self.position_time=0
-        if hasattr(self.app,'party'):
-            self.app.party.observed_layout(layout,reading)
+        self.remember_evidence(layout,reading)
         self.config.update(player=self.player,map_confirmed=self.session.map_confirmed,reading={k:reading[k] for k in ('orange','blue','player') if k in reading})
         self.overlay_dirty=True;self.paint();self.write_config()
+
+    def remember_evidence(self,layout,reading):
+        score=evidence_score(reading,layout)
+        if not score:return
+        if score>=evidence_score(self.last_reading,layout):self.last_reading=dict(reading)
+        if hasattr(self.app,'party'):self.app.party.observed_layout(layout,self.last_reading)
 
     def set_minimap(self):
         self.app.withdraw();self.overlay.hide()

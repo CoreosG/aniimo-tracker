@@ -3,6 +3,10 @@ from i18n import tr,set_language,display_day
 
 
 class TranslationTests(unittest.TestCase):
+    def test_automatic_map_waiting_label_translates_with_a_custom_key(self):
+        set_language('pt-BR')
+        self.assertEqual(tr('Waiting for map · Tab to confirm'),'Aguardando mapa · Tab para confirmar')
+
     def test_release_versions_are_not_localized_as_decimal_amounts(self):
         set_language('pt-BR')
         self.assertEqual(tr('Aniimo Tracker 0.2.0'),'Aniimo Tracker 0.2.0')

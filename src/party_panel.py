@@ -157,7 +157,7 @@ class PartyPanel:
         if self.connected:self.new_run()
 
     def observed_layout(self, layout, reading):
-        score=evidence_score(reading)
+        score=evidence_score(reading,layout)
         if self.connected and self.state and self.pending_reset is None and score>=.75 and self.app.sanctum.session.watching:
             if self.notice_pending and self.state['layout'] is None:return
             if self.state['epoch']<=self.done_epoch or self.app.sanctum.difficulty.get()!=self.state['difficulty'] or layout not in layouts_for(self.state['difficulty']):return
