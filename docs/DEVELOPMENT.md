@@ -23,6 +23,10 @@ Alternatively, run `scripts/setup.ps1`, then `scripts/run.ps1`. The map installe
 
 Tests use disposable ledgers and loopback relay instances. Desktop tests require a Windows desktop session. The tests package adds `src/` to the import path, matching the standalone application modules. Keep regressions under `tests/` and never commit personal captures or databases.
 
+Run desktop tests serially in one process. Foreground/minimize checks use a
+temporary window and need an uninterrupted desktop; concurrent UI test processes
+can steal focus from one another and invalidate their assertions.
+
 ## Build the Windows executable
 
 ```powershell
