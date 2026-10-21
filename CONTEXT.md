@@ -10,7 +10,15 @@
 
 **Progress calibration**: An explicit pairing of a cumulative total, Emperor egg count and within-egg progress observed together. It establishes the Emperor threshold without replacing the observed total or run history.
 
+**Update check**: Discovery of a newer tracker release. It can run automatically at startup and every 30 minutes unless disabled, without downloading or installing the executable.
+
+**Update and restart**: A user-requested replacement of the packaged tracker with a verified release executable. It preserves the prior executable as a `.previous` backup and reopens the new version while keeping the player's data separate.
+
 **Map-only tracking**: Navigation without an active ledger run. Explicit result entry or a recognized Inventory/result capture can switch the player into recording results; an observed starting balance is optional for recorded runs.
+
+**Capture target**: The chosen game window or explicit entire-monitor fallback. Automatic selection requires one unambiguous game window belonging to an Aniimo process; window capture uses the visible client area rather than the desktop's full monitor bounds.
+
+**Client area**: The game content inside its window borders. Window-mode screenshot reading areas, minimap coordinates and overlay placement refer to this area and follow its movement and resizing. Hidden or unavailable game content is not an observation.
 
 **Party**: Up to three people sharing navigation through one invite code. Membership is independent of each person's run ledger.
 
@@ -32,7 +40,9 @@
 
 Route targets and icon visibility are independent. Rich-room and trial goals use the downloaded route graph. Exit preference applies separately to routes from both entrances; the default remains the nearest exit. A navigation preference never changes the run ledger.
 
-The public executable excludes downloaded map art/data. The in-app installer retrieves them directly from their sources into a separate local cache. Tutorial assets are anonymized examples with metadata removed; original captures must not enter Git or releases. The update feed points only to versioned executable assets in this repository, and updates require a user download action.
+A changed capture target invalidates custom reading areas and prior map confirmation. Monitor-relative areas cannot be silently reused as client-relative areas. Default portal recognition scales independently of native custom marker calibration; a resolution change can require recalibrating custom markers.
+
+The public executable excludes downloaded map art/data. The in-app installer retrieves them directly from their sources into a separate local cache. Tutorial assets are anonymized examples with metadata removed; original captures must not enter Git or releases. The update feed points only to versioned executable assets in this repository. Downloading and replacing the executable requires an explicit Update & restart action; background checks alone never install or restart. Source runs use a browser download instead of replacing the interpreter or source files.
 
 Settings uses a section selector with shared save controls rather than another notebook: it reduces the visible fields and preserves the existing scroll container and setting bindings.
 

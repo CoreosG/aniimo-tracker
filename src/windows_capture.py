@@ -20,6 +20,12 @@ def binding_down(binding):
 
 
 def monitors():
+    from capture_target import physical_coordinates
+    with physical_coordinates():
+        return _monitors()
+
+
+def _monitors():
     user32 = ctypes.windll.user32
     class INFO(ctypes.Structure):
         _fields_ = [('size', wintypes.DWORD), ('monitor', wintypes.RECT),
@@ -41,11 +47,45 @@ def monitors():
     return sorted(result, key=lambda m: m['name'])
 
 
-def capture(path, monitor_index=0):
+def game_windows():
+    from capture_target import game_windows as available_windows
+    return available_windows()
+
+
+def game_is_foreground(target='auto'):
+    from capture_target import is_game_foreground
+    return is_game_foreground(target)
+
+
+def capture_bounds(monitor_index=0, target='auto'):
     screens = monitors()
-    if not 0 <= monitor_index < len(screens):
-        raise ValueError('Selected display is disconnected; choose a display in Settings.')
-    im = ImageGrab.grab(bbox=screens[monitor_index]['bbox'], all_screens=True)
+    if target == 'monitor':
+        if type(monitor_index) is not int or not 0 <= monitor_index < len(screens):
+            raise ValueError('Selected display is disconnected; choose a display in Settings.')
+        return tuple(screens[monitor_index]['bbox'])
+    from capture_target import window_bounds
+    return window_bounds(target, [screen['bbox'] for screen in screens])
+
+
+def capture_image(monitor_index=0, target='auto'):
+    bounds = capture_bounds(monitor_index, target)
+    if target != 'monitor' and not game_is_foreground(target):
+        raise ValueError('Aniimo is not in front. Focus the game window and capture again.')
+    from capture_target import physical_coordinates
+    with physical_coordinates():
+        image=ImageGrab.grab(bbox=bounds, all_screens=True)
+    if target!='monitor':
+        try:changed=not game_is_foreground(target) or capture_bounds(monitor_index,target)!=bounds
+        except ValueError:
+            image.close();raise
+        if changed:
+            image.close()
+            raise ValueError('Aniimo moved or lost focus during capture. Capture again when the game is ready.')
+    return image
+
+
+def capture(path, monitor_index=0, target='auto'):
+    im = capture_image(monitor_index, target)
     im.save(path)
     return im.size
 

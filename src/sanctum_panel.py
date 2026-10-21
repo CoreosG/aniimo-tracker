@@ -15,7 +15,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageGrab, ImageTk
 from sanctum import Detector, LAYOUTS, WatchSession, SITE_URL
-from windows_capture import monitors, binding_down
+from windows_capture import monitors, binding_down, capture_bounds, capture_image
 from map_engine import MapEngine,MapLibrary
 from map_overlay import MapOverlay
 from shortcut_keys import ObservedKeyTaps
@@ -31,19 +31,9 @@ def app_is_foreground():
     return pid.value==os.getpid()
 
 
-def game_is_foreground():
-    user = ctypes.windll.user32
-    user.GetForegroundWindow.restype = wintypes.HWND
-    hwnd = user.GetForegroundWindow()
-    pid = wintypes.DWORD()
-    user.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    if pid.value == os.getpid():
-        return False
-    text = ctypes.create_unicode_buffer(512)
-    user.GetWindowTextW(hwnd,text,len(text))
-    title = text.value.strip().lower()
-    return (title == 'aniimo' or title.startswith('aniimo ') or title.startswith('aniimo[')) and not any(
-        word in title for word in ('tracker','chrome','edge','codex','tools','simulator','companion','nexus'))
+def game_is_foreground(target='auto'):
+    from windows_capture import game_is_foreground as foreground_game
+    return foreground_game(target)
 
 
 class SanctumPanel:
@@ -94,6 +84,8 @@ class SanctumPanel:
         self.app.auto_maps.difficulty=self.difficulty.get()
         self.next_minimap,self.overlay_dirty = 0,True
         self.last_capture_status=''
+        self.capture_frame_bounds=None
+        self.next_bounds_check=0
         self.map_feedback='Identifying map…'
         self.capture_status=tk.BooleanVar(value=self.config.get('capture_status',True))
         self.always_status=tk.BooleanVar(value=self.config.get('always_status',False))
@@ -424,16 +416,23 @@ class SanctumPanel:
         self.save_preferences()
         self.status.set('Tracking resumed on the same run. Open the game map once if the layout needs reacquiring.')
 
+    def game_focused(self):
+        target=self.app.ledger.settings().get('capture_target','auto')
+        # Keep the existing no-argument hook/QA seam for automatic and explicit
+        # monitor modes, while a chosen HWND must match its full saved identity.
+        return game_is_foreground(target) if isinstance(target,dict) else game_is_foreground()
+
     def poll_map_keys(self):
         """Handle visibility-critical input without capture, recognition or rendering."""
         now = time.monotonic()
         down = binding_down(self.app.shortcut_specs['map'])
         escape = binding_down(self.app.shortcut_specs['close_map'])
-        in_game = game_is_foreground()
+        in_game = self.game_focused()
         if self.app.hk and hasattr(self.app.hk,'poll_map_key_events'):
             queued=self.app.hk.poll_map_key_events()
         else:
             queued=[(vk,now) for vk in self.app.hk.poll_map_keys()] if self.app.hk else []
+        if not in_game:queued=[]
         # Polling remains a fallback even with a hook installed. Native event
         # timestamps pair both observations of one press, including late events.
         map_presses=self.map_taps.presses([stamp for vk,stamp in queued if vk==0x4D],in_game and down,now)
@@ -467,7 +466,13 @@ class SanctumPanel:
         if details!=self.last_capture_status:
             self.last_capture_status=details;self.overlay_dirty=True
         now = time.monotonic()
-        in_game = game_is_foreground()
+        in_game = self.game_focused()
+        if in_game and now>=self.next_bounds_check:
+            self.next_bounds_check=now+.2
+            try:self.capture_geometry()
+            except ValueError as exc:
+                self.overlay.hide();in_game=False
+                if self.session.watching:self.status.set(str(exc))
         if self.process is not None and now-self.status_checked>2:
             self.status_checked = now
             try:
@@ -594,9 +599,17 @@ class SanctumPanel:
         index=self.app.ledger.settings()['monitor']
         selected=screens[index] if 0<=index<len(screens) else next((m for m in screens if m.get('primary')),screens[0])
         screen=selected['bbox']
+        settings=self.app.ledger.settings()
+        target=settings.get('capture_target','auto')
+        if target!='monitor':
+            try:screen=self.capture_geometry()
+            except ValueError as exc:
+                if not preview:
+                    self.overlay.hide();self.status.set(str(exc));return
         size=round(self.overlay_size.get())
         position=self.overlay.position if self.overlay.movable and self.overlay.position else self.config.get('overlay_position',[screen[2]-size-20,screen[1]+70])
-        screen=next((m['bbox'] for m in screens if m['bbox'][0]<=position[0]<m['bbox'][2] and m['bbox'][1]<=position[1]<m['bbox'][3]),screen)
+        if target=='monitor' or preview:
+            screen=next((m['bbox'] for m in screens if m['bbox'][0]<=position[0]<m['bbox'][2] and m['bbox'][1]<=position[1]<m['bbox'][3]),screen)
         size=max(150,min(size,screen[2]-screen[0]-32,screen[3]-screen[1]-100))
         position=[max(screen[0]+12,min(position[0],screen[2]-size-12)),max(screen[1]+12,min(position[1],screen[3]-size-88))]
         if self.overlay.movable:self.overlay.position=tuple(position)
@@ -621,22 +634,44 @@ class SanctumPanel:
         if header_only and details and self.session.watching:details='\n'+details.partition('\n')[2]
         self.overlay.show(image,(*position,0,0),self.opacity.get()/100,label,details=details)
 
+    def capture_geometry(self):
+        settings=self.app.ledger.settings()
+        target=settings.get('capture_target','auto')
+        bounds=capture_bounds(settings['monitor'],target)
+        space='monitor' if target=='monitor' else 'client'
+        if self.config.get('capture_space','monitor')!=space:
+            self.config.pop('minimap_region',None)
+            self.config['capture_space']=space
+            self.capture_frame_bounds=None
+            self.generation+=1
+            self.write_config()
+        previous=self.capture_frame_bounds
+        if previous and space=='client' and previous!=bounds:
+            delta=(bounds[0]-previous[0],bounds[1]-previous[1])
+            if 'overlay_position' in self.config:
+                self.config['overlay_position']=[self.config['overlay_position'][0]+delta[0],self.config['overlay_position'][1]+delta[1]]
+            if self.overlay.position:
+                self.overlay.position=(self.overlay.position[0]+delta[0],self.overlay.position[1]+delta[1])
+            self.overlay_dirty=True
+        self.capture_frame_bounds=bounds
+        return bounds
+
     def scan(self, explicit=False,minimap=False):
         if not self.assets_ready:
             self.status.set('Download the map pack in Map & routes first.');return
         if self.busy:
             return
-        screens=monitors()
-        monitor = self.app.ledger.settings()['monitor']
-        if not 0<=monitor<len(screens):
-            self.status.set('Selected display is disconnected; choose a display in Settings.')
+        settings=self.app.ledger.settings()
+        monitor,target=settings['monitor'],settings.get('capture_target','auto')
+        try:self.capture_geometry()
+        except ValueError as exc:
+            self.status.set(str(exc))
             return
         self.busy = True
         generation = self.generation
         requested=self.map_rescan_pending or explicit
         if self.overlay.visible and not self.overlay.capture_excluded:
             self.overlay.hide();self.app.update_idletasks()
-        bbox=screens[monitor]['bbox']
         engine=self.engine
         detector=self.detector
         maps=self.maps
@@ -647,7 +682,7 @@ class SanctumPanel:
             try:
                 # Display capture can wait on the graphics driver. Keep it off
                 # Tk's thread so map-key input can hide the overlay immediately.
-                image = ImageGrab.grab(bbox=bbox,all_screens=True).convert('RGB')
+                image = capture_image(monitor,target).convert('RGB')
                 map_screen=detector.is_map_screen(image)
                 if map_screen or explicit:
                     reading=detector.detect(image)
@@ -851,13 +886,12 @@ class SanctumPanel:
     def set_minimap(self):
         self.app.withdraw();self.overlay.hide()
         def capture():
-            screens=monitors();monitor=self.app.ledger.settings()['monitor']
-            if not 0<=monitor<len(screens):
-                self.app.deiconify();self.status.set('Selected display is disconnected; choose a display in Settings.')
-                return
-            try:image=ImageGrab.grab(bbox=screens[monitor]['bbox'],all_screens=True).convert('RGB')
-            except OSError:
-                self.app.deiconify();self.status.set('Map capture failed');return
+            settings=self.app.ledger.settings()
+            try:
+                self.capture_geometry()
+                image=capture_image(settings['monitor'],settings.get('capture_target','auto')).convert('RGB')
+            except (OSError,ValueError) as exc:
+                self.app.deiconify();self.status.set(str(exc));return
             self.app.deiconify();window=tk.Toplevel(self.app);window.title('Drag tightly around the minimap; release to save')
             shown=image.copy();shown.thumbnail((1200,750))
             canvas=tk.Canvas(window,width=shown.width,height=shown.height,highlightthickness=0);canvas.pack()

@@ -1,5 +1,25 @@
 # Changes
 
+## 0.3.2
+
+- Show an available-update banner at the top of the tracker.
+- Add **Update & restart** for packaged Windows executables. Download and verify
+  the release from GitHub, wait for the current tracker to exit, replace the
+  executable while keeping a `.previous` backup, and reopen the updated app.
+- Check at startup and every 30 minutes while open. Automatic checks can be
+  disabled; manual checks remain available. Downloads and restart require a click.
+- Keep browser downloads for source runs. Users of 0.3.1 or earlier must download
+  0.3.2 manually once to gain the new updater. Run history and settings are preserved.
+- Default capture to the Aniimo window's client area. Refresh and select explicit
+  game windows, or choose an entire-monitor fallback. OCR, minimap tracking and
+  overlay placement follow the game window as it moves or resizes.
+- Stop capture for unavailable, minimized, background, ambiguous or off-screen
+  targets. Changing targets resets custom reading areas and requests fresh map
+  confirmation; legacy monitor areas reset on migration to client capture.
+- Normalize default portal recognition across tested 720p, 1080p and 4K fixtures.
+  Custom marker calibrations remain native to their captured resolution. Keep
+  the game visible; desktop cropping does not recover pixels behind other windows.
+
 ## 0.3.1
 
 - Capture Inventory while map-only tracking is active to start a recorded run.

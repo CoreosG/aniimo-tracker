@@ -34,7 +34,27 @@ Download **[AniimoTracker.exe from the latest release](https://github.com/Coreos
 
 The first-run tutorial includes **Download map pack** and **Set current stats** buttons, with live setup status. You can install maps in the background and set stats without starting a run. It explains capture, points, saving, overlays and parties; the points example labels the cumulative total, run award and Emperor eggs separately. Reopen it anytime with **?** at the top. Its example screenshots are anonymized; original player captures are not distributed. All shortcuts shown in the guide follow your current settings.
 
-**Settings → Storage & updates** checks GitHub at launch, at most once a day and offers a manual check. New versions download when you click the button; nothing is installed or executed automatically. Replace the old executable after closing it. Your history and settings remain in `%LOCALAPPDATA%/AniimoTracker`.
+### Updating the tracker
+
+**Using 0.3.1 or earlier?** Download **0.3.2** manually once from the latest release,
+close the older tracker, and open the new executable. The older updater only
+opens a browser download; it cannot replace itself. Your history and settings
+remain in `%LOCALAPPDATA%/AniimoTracker`.
+
+Starting with **0.3.2**, the tracker checks at startup and every **30 minutes** while
+open. An available update appears in a top banner and in
+**Settings → Storage & updates**. Disable **Check on startup and every 30 minutes**
+to opt out; **Check for updates** remains available for manual checks.
+
+Click **Update & restart** when you are ready. The tracker downloads and verifies
+the release executable from the project's GitHub release, waits for the current
+tracker process to exit, then replaces the executable and opens the new version.
+The previous executable is retained alongside it with a **`.previous`** suffix.
+Your data folder stays separate from the executable. Checking alone does not
+download an executable, replace it, or restart the app.
+
+When running from Python source, updates use the **browser-download** fallback;
+the updater does not replace your Python interpreter or source checkout.
 
 ## Run from source
 
@@ -102,8 +122,9 @@ known-loot calculations, but do not lower the successful-run points average.
    **total Egg Heist points**, tickets and coin balance. Configure the egg target,
    deadline, ticket budget and costs in Settings. Initial ticket values are
    examples; replace them with your own. An unknown total stays blank until set.
-2. Choose the game monitor. Start a run, with or without a balance, or start
-   map-only tracking from **Map & routes**.
+2. Use automatic game-window capture, or select the intended window in
+   **Settings → General → Game capture**. Start a run, with or without a balance,
+   or start map-only tracking from **Map & routes**.
 3. Open the full game map with `M` during a run to identify the layout. Recognition
    and OCR can be wrong; review the displayed result and calibrate if needed.
 4. Capture the loot and points result screens, then save the run.
@@ -121,6 +142,35 @@ The loot valuation is **separate from actual cash**: unsold items do not add to
 the wallet. A starting balance is a wallet checkpoint after sales and shopping.
 Failed runs affect rank and tickets but are excluded from the successful-run
 points average.
+
+### Game-window capture
+
+Open **Settings → General → Game capture**. **Capture target** defaults to
+**Aniimo window (automatic)**. With one Aniimo game window available, the app
+follows its client area—the game content inside the window borders—as it moves
+or resizes. Screenshots, OCR reading areas and minimap coordinates use that same
+game area. The overlay follows the window and is kept inside it.
+
+Use **Refresh windows** to list the available Aniimo game processes and choose
+an explicit window if more than one is running. If you need monitor capture,
+select **Entire monitor (manual fallback)** and choose **Fallback monitor**;
+that monitor selection is used only in this fallback mode.
+
+Window capture stops rather than guessing when the target is missing, minimized,
+in the background, ambiguous or partly off-screen. Keep the whole game area
+visible on your displays and bring the game to the foreground before capturing.
+Capture crops the visible desktop; it does **not** reconstruct game pixels hidden
+behind another window.
+
+Changing the capture target clears custom OCR/minimap reading areas and requires
+a fresh full-map confirmation. When older monitor-based settings are first
+migrated to client-area capture, their custom reading areas are reset too.
+
+Default portal matching normalizes to a 1080p reference, with regression fixtures
+covering the same layout at **720p, 1080p and 4K**. Custom marker calibrations stay
+at their native resolution and may need to be redone after a resolution change.
+These checks do not guarantee every resolution, aspect ratio or in-game UI scale;
+review recognition and use calibration when your setup differs.
 
 ### Total points and Emperor eggs
 

@@ -8,6 +8,7 @@ class IdleOverlayTests(unittest.TestCase):
     def test_optional_idle_bar_stays_between_runs_and_respects_hide_and_focus(self):
         with tempfile.TemporaryDirectory() as directory, patch('sanctum_panel.game_is_foreground', return_value=True):
             app = App(directory, hotkeys=False)
+            app.ledger.configure(capture_target='monitor')
             try:
                 panel = app.sanctum
                 panel.tick(); app.update_idletasks()

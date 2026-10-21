@@ -15,10 +15,12 @@
 ## Get started
 
 1. Download **AniimoTracker.exe** from the [latest release](https://github.com/CoreosG/aniimo-tracker/releases/latest) and open it. **No Python required.**
-2. Use the tutorial's **Set current stats** button to enter your **total Egg Heist points**, tickets and balance, then select your game monitor. You can set stats without starting a run. Reopen the tutorial anytime with **?**.
+2. Use the tutorial's **Set current stats** button to enter your **total Egg Heist points**, tickets and balance. Capture follows the Aniimo window automatically by default; choose another target in **Settings → General → Game capture** if needed. You can set stats without starting a run. Reopen the tutorial anytime with **?**.
 3. Click **Download map pack** in the tutorial or **Map & routes** once. Maps download directly from AniimoTools and MOANIIMO in the background.
 
-**Updating?** Close the older tracker and open the new executable. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`. Check for updates in **Settings → Storage & updates**.
+**Updating from 0.3.1 or earlier?** Download **0.3.2** once from the latest release, close the older tracker, and open the new executable. Older versions only open the download in your browser. Your history and settings stay in `%LOCALAPPDATA%/AniimoTracker`.
+
+**From 0.3.2 onward**, an update banner offers **Update & restart**: it downloads and verifies the release, closes the tracker, replaces the executable with a `.previous` backup, and reopens it. Checks run at startup and every 30 minutes; turn them off in **Settings → Storage & updates** if preferred.
 
 ## One shortcut, the right reading
 
@@ -60,7 +62,13 @@ These are anonymized tutorial examples. Original player screenshots are not dist
 
 **Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory captures record your wallet after sales and shopping. Failed runs affect progression but stay out of the successful-run points average.
 
-### New in 0.3.1
+### New in 0.3.2
+
+Update directly from the tracker with **Update & restart**, available in the top banner and **Settings → Storage & updates**. Downloads and replacement require your click. Automatic checks run at startup and every 30 minutes; source runs keep the browser-download option.
+
+Capture follows the Aniimo window's game area as it moves or resizes, and the overlay stays inside it. **Settings → General → Game capture** offers automatic or explicit game-window selection and a manual entire-monitor fallback. Default portal recognition covers tested 720p, 1080p and 4K cases; keep the game visible and recalibrate custom markers after resolution changes when needed. See [capture setup and limits](docs/USER_GUIDE.md#game-window-capture).
+
+### Added in 0.3.1
 
 **Total points come first**, including before Egg Emperor. Egg counts are derived automatically; optional calibration uses the total, eggs and progress shown on the same screen. The tutorial now includes setup buttons and annotated examples distinguishing total points from a run's award. Map-only captures switch into run tracking or result entry when needed.
 

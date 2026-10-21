@@ -34,6 +34,18 @@ def entry_map(covered=True, controls=True, fully_covered=False, scale=1., revers
 
 
 class PortalOcclusionTests(unittest.TestCase):
+    def test_default_portals_use_the_same_game_coordinates_at_720p_and_4k(self):
+        with tempfile.TemporaryDirectory() as directory:
+            detector = Detector(directory)
+            for size in ((1280,720), (3840,2160)):
+                with self.subTest(size=size):
+                    image=entry_map(covered=False).resize(size,Image.Resampling.LANCZOS)
+                    reading=detector.detect(image)
+                    self.assertEqual(reading['candidates'],[32])
+                    self.assertLessEqual(abs(reading['orange'][0]-600*size[0]/1920),4)
+                    self.assertLessEqual(abs(reading['blue'][0]-1200*size[0]/1920),4)
+                    self.assertLessEqual(abs(reading['blue'][1]-650*size[1]/1080),4)
+
     def test_stacked_party_numbers_on_both_portals_keep_visible_sides_identifiable(self):
         with tempfile.TemporaryDirectory() as directory:
             reading = Detector(directory).detect(entry_map())

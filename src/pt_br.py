@@ -1,5 +1,31 @@
 """Brazilian Portuguese presentation catalog (English source phrases)."""
 PT_BR=dict(line.split('|',1) for line in r'''
+Aniimo moved or lost focus during capture. Capture again when the game is ready.|O Aniimo mudou de posição ou perdeu o foco durante a captura. Capture novamente quando o jogo estiver pronto.
+Check on startup and every 30 minutes|Verificar ao iniciar e a cada 30 minutos
+Update & restart|Atualizar e reiniciar
+Updates use verified GitHub releases. Your run data stays on this PC.|As atualizações usam versões verificadas do GitHub. Seus dados ficam neste PC.
+Downloading update…|Baixando atualização…
+Update ready · finishing current capture…|Atualização pronta · finalizando a captura atual…
+Restarting to update…|Reiniciando para atualizar…
+Update failed · try again|Falha ao atualizar · tente novamente
+Update failed ·|Falha ao atualizar ·
+Capture target|Alvo de captura
+Refresh windows|Atualizar janelas
+Aniimo window (automatic)|Janela do Aniimo (automático)
+Entire monitor (manual fallback)|Monitor inteiro (alternativa manual)
+Selected game window unavailable · choose again|Janela selecionada indisponível · escolha novamente
+Fallback monitor (used only for Entire monitor)|Monitor alternativo (usado apenas em Monitor inteiro)
+Window capture follows the game client area as it moves or resizes. Keep the game visible. Monitor capture is a manual fallback.|A captura acompanha a área do jogo ao mover ou redimensionar a janela. Mantenha o jogo visível. A captura do monitor é uma alternativa manual.
+Capture target saved · open the game map to refresh. Custom reading areas were reset.|Alvo salvo · abra o mapa do jogo para atualizar. As áreas personalizadas de leitura foram redefinidas.
+Wait for the current capture to finish before changing capture target.|Aguarde a captura atual terminar antes de trocar o alvo.
+Aniimo window not found. Open the game or choose Monitor capture in Settings.|Janela do Aniimo não encontrada. Abra o jogo ou escolha a captura do monitor nas Configurações.
+Multiple Aniimo windows found. Select a game window in Settings.|Várias janelas do Aniimo encontradas. Selecione uma nas Configurações.
+Selected game window is unavailable. Refresh Capture target in Settings.|A janela selecionada está indisponível. Atualize o Alvo de captura nas Configurações.
+Choose Auto, a game window, or Monitor capture in Settings.|Escolha Automático, uma janela do jogo ou a captura do monitor nas Configurações.
+Aniimo is minimized. Restore the game window to capture it.|O Aniimo está minimizado. Restaure a janela para capturá-la.
+Aniimo game area is too small to capture.|A área do Aniimo está pequena demais para capturar.
+Aniimo window is partly off screen. Move the whole game area onto your displays.|Parte da janela está fora da tela. Mova toda a área do jogo para os monitores.
+Aniimo is not in front. Focus the game window and capture again.|O Aniimo não está em primeiro plano. Ative a janela do jogo e capture novamente.
 Map tracker active · capture Inventory to start a run, or capture/enter points and Save run.|Rastreador ativo · capture o inventário para iniciar uma partida, ou capture/informe os pontos e salve.
 Points ready · Save run to record this result. Loot is optional.|Pontos prontos · Salvar partida registra este resultado. Saque é opcional.
 Capture or enter points, then Save run.|Capture ou informe os pontos e salve a partida.

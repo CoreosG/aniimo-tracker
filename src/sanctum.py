@@ -354,6 +354,19 @@ class Detector:
         cv2.setNumThreads(2)
         if not self.calibrated:
             return dict(candidates=[], reason='Calibrate orange/blue portal markers once using an M-map screenshot.')
+        # Default HUD marker crops were captured at 1080p. Normalize the whole
+        # game client once so 720p/4K use the same evidence thresholds; return
+        # positions in the caller's original pixel space for calibration and map
+        # registration. Custom captures remain tied to their calibration size.
+        custom=any((self.folder/f'{kind}.png').exists() for kind in ('orange','blue','player'))
+        if not custom and image.height!=1080:
+            normalized=image.resize((max(1,round(image.width*1080/image.height)),1080),Image.Resampling.LANCZOS)
+            reading=self.detect(normalized)
+            for kind in ('orange','blue','player'):
+                if kind in reading:
+                    point=reading[kind]
+                    reading[kind]=[round(point[0]*image.width/normalized.width),round(point[1]*image.height/normalized.height)]
+            return reading
         if not (self.folder/'orange.png').exists() and not self.is_map_screen(image):
             return dict(candidates=[],map_screen=False,reason='Full map is not open; waiting for the game map.')
         frame = np.asarray(image.convert('RGB'))

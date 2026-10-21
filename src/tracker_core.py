@@ -9,7 +9,7 @@ import math
 DEFAULTS = dict(rank=177, rank_points=0, tickets=105, target=1000,
                 deadline='2026-12-09', points_per_rank=180, daily_tickets=15,
                 normal_points=190, first_points=320, reset_hour=0,
-                monitor=0, starting_coins=0, lifetime_offset=None, prices=None, regions={},
+                monitor=0, capture_target='auto', starting_coins=0, lifetime_offset=None, prices=None, regions={},
                 gear_price=120000, gear_discount_price=60000, gear_discount_count=3,
                 gear_slots=2, gear_life=2, key_price=100000, solo_keys=2, party_keys=1,
                 budget_party=False, play_days_week=7, runs_per_play_day=0,

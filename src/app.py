@@ -8,6 +8,9 @@ import queue
 import re
 import shutil
 import sys
+if __name__=='__main__' and sys.argv[1:2]==['--apply-update']:
+    from update_install import run_helper
+    sys.exit(run_helper(sys.argv[2:]))
 import threading
 import time
 import uuid
@@ -17,7 +20,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
 from tracker_core import Ledger, forecast, PRICES, ticket_cost, break_even
-from windows_capture import Hotkeys, capture, monitors, recognize
+from windows_capture import Hotkeys, capture, monitors, recognize,game_windows
 from readings import DEFAULT_REGIONS, parse_amount, single_amount, parse_points, single_points, loot_reading, rank_points_reading, lifetime_reading
 from sanctum_panel import SanctumPanel
 from screen_kind import screen_kind
@@ -52,6 +55,10 @@ class App(tk.Tk):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         (self.data_dir / 'screenshots').mkdir(exist_ok=True)
         self.ledger = Ledger(self.data_dir / 'tracker.db')
+        capture_settings=self.ledger.settings()
+        capture_space='monitor' if capture_settings['capture_target']=='monitor' else 'client'
+        if capture_settings.get('regions_space','monitor')!=capture_space:
+            self.ledger.configure(regions={},regions_space=capture_space)
         language=self.ledger.settings().get('language','en')
         self.localizer=Localizer(self,language if language in LANGUAGES else 'en')
         self.next_locale_refresh=0
@@ -239,6 +246,11 @@ class App(tk.Tk):
         self.party_notice_frame=ttk.Frame(header)
         ttk.Label(self.party_notice_frame,textvariable=self.party_notice,foreground='#ffd083',wraplength=1000).pack(side='left')
         ttk.Button(self.party_notice_frame,text='×',width=3,command=lambda:self.set_party_notice('')).pack(side='right')
+        self.update_notice=tk.StringVar()
+        self.update_notice_frame=ttk.Frame(header,style='Panel.TFrame',padding=(12,6))
+        ttk.Label(self.update_notice_frame,textvariable=self.update_notice,style='Panel.TLabel').pack(side='left')
+        self.update_action=ttk.Button(self.update_notice_frame,text='Update & restart',command=lambda:self.updates.install_update())
+        self.update_action.pack(side='right',padx=(12,0))
         header.bind('<Configure>',lambda event:guidance.configure(wraplength=max(300,event.width-56)))
 
     def set_party_notice(self,text):
@@ -500,7 +512,16 @@ class App(tk.Tk):
             grid.columnconfigure(col, weight=1)
         screen_box = ttk.LabelFrame(general,text='Game capture',padding=12)
         screen_box.pack(fill='x',pady=12)
-        ttk.Label(screen_box, text='Capture display (Windows display name)', style='Muted.TLabel').pack(anchor='w')
+        ttk.Label(screen_box,text='Capture target',style='Muted.TLabel').pack(anchor='w')
+        capture_row=ttk.Frame(screen_box);capture_row.pack(fill='x',pady=4)
+        self.capture_target_var=tk.StringVar()
+        self.capture_target_choice=ttk.Combobox(capture_row,state='readonly',textvariable=self.capture_target_var)
+        self.capture_target_choice.pack(side='left',fill='x',expand=True)
+        self.capture_target_choice.bind('<<ComboboxSelected>>',lambda event:self.select_capture_target())
+        ttk.Button(capture_row,text='Refresh windows',command=self.refresh_capture_targets).pack(side='right',padx=(8,0))
+        self.refresh_capture_targets()
+        ttk.Label(screen_box,text='Window capture follows the game client area as it moves or resizes. Keep the game visible. Monitor capture is a manual fallback.',style='Muted.TLabel',wraplength=700).pack(anchor='w',pady=(2,8))
+        ttk.Label(screen_box, text='Fallback monitor (used only for Entire monitor)', style='Muted.TLabel').pack(anchor='w')
         self.screens = monitors()
         self.monitor_choice = ttk.Combobox(screen_box, state='readonly', values=[
             f"{m['name']}  ·  {m['bbox'][2]-m['bbox'][0]}×{m['bbox'][3]-m['bbox'][1]}" + ('  · primary' if m['primary'] else '')
@@ -753,6 +774,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         self.run_guidance.set(guidance)
 
     def capture_image(self, kind, from_button=False):
+        if self.updates.restart_pending:return
         if kind == 'balance' and not self.can_start_capture():
             return
         if self.busy_capture:
@@ -768,7 +790,8 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
     def finish_capture(self, kind):
         try:
             path = self.data_dir / 'screenshots' / f'{datetime.now():%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:8]}_{kind}.png'
-            capture(path, self.ledger.settings()['monitor'])
+            settings=self.ledger.settings()
+            capture(path,settings['monitor'],settings['capture_target'])
             if kind=='auto':self.auto_attach(path)
             else:self.attach(kind,path)
         except Exception as exc:
@@ -889,6 +912,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
 
     def tick(self):
         self.updates.tick()
+        if self.updates.restart_pending:return
         self.party.tick()
         self.sanctum.tick()
         self.update_run_status()
@@ -1419,6 +1443,36 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         for reward in self.ledger.ticket_rewards():
             tree.insert('','end',values=(reward['day'],f'+{reward["count"]}',reward['source']))
 
+    def refresh_capture_targets(self):
+        self.capture_targets=[dict(name='Aniimo window (automatic)',target='auto'),dict(name='Entire monitor (manual fallback)',target='monitor')]+game_windows()
+        selected=self.ledger.settings()['capture_target']
+        index=next((i for i,item in enumerate(self.capture_targets) if item['target']==selected),None)
+        if index is None:
+            index=len(self.capture_targets)
+            self.capture_targets.append(dict(name='Selected game window unavailable · choose again',target=selected))
+        self.capture_target_choice.configure(values=[item['name'] for item in self.capture_targets])
+        self.capture_target_choice.current(index)
+
+    def select_capture_target(self):
+        if self.busy_capture or self.auto_busy or self.auto_pending or self.pending_ocr:
+            self.refresh_capture_targets()
+            self.status.set('Wait for the current capture to finish before changing capture target.')
+            return
+        index=self.capture_target_choice.current()
+        if index<0:return
+        target=self.capture_targets[index]['target']
+        if target==self.ledger.settings()['capture_target']:return
+        self.ledger.configure(capture_target=target,regions={},regions_space='monitor' if target=='monitor' else 'client')
+        panel=self.sanctum
+        panel.config.pop('minimap_region',None)
+        panel.generation+=1;panel.context_serial+=1
+        panel.session.map_confirmed=False
+        panel.map_open=False;panel.map_rescan_pending=False
+        panel.player=None;panel.position_time=0;panel.overlay_dirty=True
+        panel.config.update(map_confirmed=False,player=None,reading={})
+        panel.write_config()
+        self.status.set('Capture target saved · open the game map to refresh. Custom reading areas were reset.')
+
     def save_settings(self):
         try:
             changes = {k: (v.get().strip() if k == 'deadline' else self.integer(v.get())) for k,v in self.setting_vars.items()}
@@ -1560,6 +1614,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             self.status.set('CSV exported')
 
     def close(self):
+        self.updates.close()
         self.after_cancel(self.tick_id)
         self.after_cancel(self.map_input_tick_id)
         self.sanctum.close()
@@ -1581,6 +1636,7 @@ if __name__ == '__main__':
             if not os.environ.get('ANIIMO_MAP_ASSETS'):raise ValueError('Temporary map directory required')
             with tempfile.TemporaryDirectory() as directory:
                 app=App(directory,hotkeys=False)
+                app.ledger.configure(capture_target='monitor')
                 assert not app.sanctum.assets_ready
                 app.tutorial.first_use();app.update()
                 assert app.tutorial.window is not None
@@ -1636,6 +1692,7 @@ if __name__ == '__main__':
                 if '360' not in ocr:
                     raise RuntimeError('Packaged OCR could not recognize test number: ' + ocr)
                 app = App(data_dir=temp, hotkeys=False)
+                app.ledger.configure(capture_target='monitor')
                 app.update()
                 untouched=app.ledger.summary()
                 app.sanctum.tracking_button.invoke()
