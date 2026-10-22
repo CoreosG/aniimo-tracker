@@ -1,9 +1,10 @@
 # Self-hosting the party relay
 
-The relay has no map images, OCR, database or ledger. It keeps only ephemeral
-party membership, layout evidence and player coordinates in RAM. It uses one
+The relay has no map images, OCR, database or ledger. Live party membership,
+layout evidence and player coordinates stay in RAM, with an optional short-lived
+restart checkpoint for membership and layout only. It uses one
 async process; do not run multiple independent replicas behind a load balancer
-without shared room routing. Restarting the relay expires all invite codes.
+without shared room routing. Without the checkpoint, restarting expires all codes.
 
 ## Docker
 
@@ -62,10 +63,10 @@ used for a trusted LAN; public deployments should use TLS.
   layout changes send full state; an idle party also receives a full snapshot
   every 15 seconds to repair a missed roster notification. Each recipient has one replaceable pending
   update; a slow reader is disconnected rather than delaying other rooms.
-- No WebSocket compression, image processing, screenshot uploads or persistent
-  player records. Stale positions fade and disappear after 30 seconds.
+- No WebSocket compression, image processing, screenshot uploads or permanent
+  player history. Stale positions fade and disappear after 30 seconds.
 - Idle WebSocket connections have ping timeouts; empty rooms disappear after
-  the reconnect grace period. Invite codes and rooms are not written to disk.
+  the reconnect grace period. Optional restart checkpoints expire quickly; see below.
 
 Set `PARTY_MAX_ROOMS`, `PARTY_MAX_CONNECTIONS`, and `PARTY_PER_IP` in Compose to
 adjust admission. The per-IP limit defaults to 30; increase it if many real
@@ -101,8 +102,34 @@ Once per minute, `health` summarizes room/connection counts and interval totals
 for full snapshots, position deltas, coalesced full states, rejected messages
 and writer failures. There are no per-position logs or stored player histories.
 Compose rotates logs at two files of 5 MB each. Detailed diagnostics are not
-exposed through the public health endpoint. The relay runs as one process;
-deploying a new image restarts it and expires existing parties.
+exposed through the public health endpoint.
+
+## Restart recovery cache
+
+Compose enables `PARTY_CACHE_PATH=/data/party-cache.json` on a named volume owned
+by the relay's non-root user. Without Docker, set this variable to a private
+writable path, or omit it to keep the relay entirely in memory. Only one relay
+process may use a cache; this does not enable replicas or load balancing.
+
+The cache contains invite codes, names/colors, member IDs, shared layout/session
+state and SHA-256 hashes of random reconnect tokens. It contains **no raw tokens,
+coordinates, screenshots or financial data**. File permissions are owner-only.
+Snapshots replace the old file atomically, off the event loop, at most once per
+second after changes and every ten seconds while parties exist.
+
+An online member's checkpoint expires after 60 seconds; offline members retain
+their existing reconnect deadline. After a quick restart, the existing desktop
+client reconnects with its original identity/code. Everyone initially appears
+offline and positions must be observed again. Long outages expire the party.
+Explicit Leave removes the reservation from the next checkpoint; an abrupt
+crash can lose changes since the last completed write. This is a small recovery
+cache, not a database of player history. Expired data is removed on the next
+checkpoint while running; when stopped, expired file contents remain until the
+relay starts again or the volume is removed. Corrupt/unreadable cache files are
+reported without exposing their contents and do not prevent new parties.
+
+The first deployment enabling this feature still resets existing in-memory
+parties once. Future short relay restarts can recover the last checkpoint.
 
 ## Shared-run rules
 

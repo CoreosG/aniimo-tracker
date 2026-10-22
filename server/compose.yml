@@ -13,6 +13,9 @@ services:
       PARTY_PER_IP: "30"
       # Only enable behind a trusted proxy; the published port is loopback-only.
       PARTY_TRUST_PROXY: "1"
+      PARTY_CACHE_PATH: "/data/party-cache.json"
+    volumes:
+      - party-cache:/data
     mem_limit: 512m
     cpus: 1.5
     pids_limit: 64
@@ -30,3 +33,6 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+
+volumes:
+  party-cache:

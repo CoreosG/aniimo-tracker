@@ -1,6 +1,7 @@
 """Ephemeral three-person navigation relay. Run with python party_server.py."""
 import argparse
 import asyncio
+import hashlib
 from collections import Counter
 from http import HTTPStatus
 import json
@@ -15,6 +16,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 from map_catalog import DIFFICULTIES, layouts_for
 from party_protocol import COLORS, VERSION, username
+from party_cache import PartyCache
 
 LOG = logging.getLogger('party.relay')
 
@@ -62,7 +64,7 @@ def decode_message(raw):
 
 
 class Relay:
-    def __init__(self, max_rooms=1000, max_connections=3200, per_ip=30, trust_proxy=False):
+    def __init__(self, max_rooms=1000, max_connections=3200, per_ip=30, trust_proxy=False, cache_path=None):
         self.rooms = {}
         self.connections = Counter()
         self.max_rooms, self.max_connections, self.per_ip = max_rooms, max_connections, per_ip
@@ -70,6 +72,27 @@ class Relay:
         self.state_interval = 15.
         self.metrics = Counter()
         self.last_summary = time.monotonic()
+        self.cache = PartyCache(cache_path) if cache_path else None
+        self.last_cache = 0.
+        self.cache_retry = 0.
+        self.cache_dirty = self.cache is not None
+        if self.cache:
+            try:
+                for record in self.cache.load(max_rooms):
+                    members = {}
+                    for saved in record.pop('members'):
+                        remaining=saved.pop('remaining')
+                        member=dict(saved,socket=None,position=None,seen=0.,queue=None,
+                                    disconnected=time.monotonic()-60+remaining,credit=8.,rate_time=time.monotonic())
+                        members[member['id']]=member
+                    room=dict(record,members=members,diagnostic_id=secrets.token_hex(6),last_full=0.,
+                              dirty=True,positions_dirty=False)
+                    if room['host'] not in members:room['host']=next(iter(members))
+                    self.rooms[room['code']]=room
+                diagnostic('cache_restored', rooms=len(self.rooms))
+            except (OSError,ValueError,TypeError,KeyError,RecursionError,OverflowError):
+                self.rooms.clear()
+                diagnostic('cache_restore_failed')
 
     def room_event(self, event, room, **fields):
         diagnostic(event, room=room['diagnostic_id'], members=len(room['members']),
@@ -126,7 +149,7 @@ class Relay:
                     if (not isinstance(identity,str) or not re.fullmatch(r'[0-9a-f]{16}',identity) or
                             not isinstance(token,str) or len(token)>128):raise ValueError('invalid_message')
                     member = room['members'].get(identity)
-                    if member is None or not secrets.compare_digest(member['token'], token):
+                    if member is None or not secrets.compare_digest(member['token_hash'], hashlib.sha256(token.encode()).hexdigest()):
                         member = None; raise ValueError('session_expired')
                     if member['socket'] is not None: raise ValueError('already_connected')
                     name = member['username']
@@ -136,7 +159,8 @@ class Relay:
             else: raise ValueError('invalid_message')
             if member is None:
                 color = next(c for c in COLORS if c not in [p['color'] for p in room['members'].values()])
-                member = dict(id=secrets.token_hex(8), token=secrets.token_urlsafe(32), username=name,
+                token=secrets.token_urlsafe(32)
+                member = dict(id=secrets.token_hex(8), token_hash=hashlib.sha256(token.encode()).hexdigest(), username=name,
                               color=color, socket=None, position=None, seen=0., disconnected=0.,
                               credit=8., rate_time=time.monotonic(), queue=None)
                 room['members'][member['id']] = member
@@ -145,7 +169,7 @@ class Relay:
             member['queue'] = asyncio.Queue(maxsize=1)
             link = secrets.token_hex(6)
             await socket.send(json.dumps(dict(type='welcome', version=VERSION, id=member['id'],
-                                              token=member['token'], state=self.state(room))))
+                                              token=token, state=self.state(room))))
             self.room_event('member_connected', room, link=link, resumed=kind=='resume')
             writer = asyncio.create_task(self.write(socket, member['queue'], room, link))
             room['dirty'] = True
@@ -188,6 +212,7 @@ class Relay:
                 self.room_event('reservation_expired', room)
         if not room['members']:
             self.rooms.pop(room['code'], None)
+            self.cache_dirty = True
         elif room['host'] not in room['members']:
             room['host'] = next(iter(room['members'])); room['dirty'] = True
 
@@ -261,12 +286,14 @@ class Relay:
         while True:
             await asyncio.sleep(.25)
             now = time.monotonic()
+            changed = False
             if now-self.last_summary >= 60:
                 diagnostic('health', rooms=len(self.rooms), connections=sum(self.connections.values()), **self.metrics)
                 self.metrics.clear()
                 self.last_summary = now
             for room in list(self.rooms.values()):
                 self.clean_room(room)
+                changed = changed or room['dirty']
                 full = room['dirty'] or now-room['last_full'] >= self.state_interval
                 if not full and not room['positions_dirty']: continue
                 if full: room['last_full'] = now
@@ -286,6 +313,19 @@ class Relay:
                         if full_payload is None: full_payload=json.dumps(dict(type='state',state=snapshot),separators=(',', ':'))
                         queue.put_nowait((True,full_payload))
                     else:queue.put_nowait((full,payload))
+            self.cache_dirty = self.cache_dirty or changed
+            if self.cache and now>=self.cache_retry and (self.cache_dirty or (self.rooms and now-self.last_cache>=10)):
+                snapshot=self.cache.snapshot(self.rooms)
+                self.last_cache=now
+                self.cache_dirty=False
+                try:
+                    await asyncio.to_thread(self.cache.save,snapshot)
+                    self.cache_retry=now+1
+                except (OSError,ValueError):
+                    self.cache_dirty=True
+                    self.metrics['cache_failures']+=1
+                    self.cache_retry=now+10
+                    diagnostic('cache_save_failed')
 
 
 def health(connection, request):
@@ -296,7 +336,8 @@ def health(connection, request):
 
 async def main(host, port, max_rooms, max_connections, per_ip):
     relay = Relay(max_rooms=max_rooms, max_connections=max_connections, per_ip=per_ip,
-                  trust_proxy=os.environ.get('PARTY_TRUST_PROXY')=='1')
+                  trust_proxy=os.environ.get('PARTY_TRUST_PROXY')=='1',
+                  cache_path=os.environ.get('PARTY_CACHE_PATH'))
     async with serve(relay.handle, host, port, process_request=health, compression=None,
                      max_size=2048, max_queue=2, write_limit=8192, ping_interval=20,
                      ping_timeout=20, close_timeout=2, server_header=None):

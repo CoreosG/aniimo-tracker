@@ -6,10 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-22
+
 ### Added
 
 - Privacy-safe relay diagnostics for membership, roster transport delivery and
   writer failures, with bounded Docker logs and aggregate minute counters.
+- Optional short-lived party restart cache, enabled in Compose. Membership,
+  shared layout and hashed reconnect credentials survive a quick relay restart;
+  live positions are cleared and clients reconnect using the same code.
+
+### Changed
+
+- Thinner outlined routes with shorter dashes reduce overlap clutter on the map.
 
 ### Fixed
 

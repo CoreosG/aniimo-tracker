@@ -38,6 +38,14 @@ are bounded client-side paths, with no trail history or extra calculation on the
 relay. Explicit update restarts use a single-use DPAPI-protected resume handoff
 and disconnect without sending Leave; ordinary closes retain Leave behavior.
 
+The relay optionally checkpoints membership and shared layout through `party_cache.py`.
+An atomic private file holds at most the configured room limit, no coordinates,
+and SHA-256 hashes of high-entropy resume tokens. Writes run off the event loop
+after membership/layout changes and every ten seconds while active. A cached
+member expires at most sixty seconds after its last online checkpoint; offline
+reservations keep their original expiry. Restore marks everyone offline and clears
+positions. This is restart recovery for one relay process, not multi-replica routing.
+
 Map libraries retain two recently used models each. Route results live in each
 model's bounded cache, so global cache keys cannot prolong an evicted model's
 lifetime. Active callers may keep their current model even after library eviction.

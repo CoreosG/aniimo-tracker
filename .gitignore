@@ -21,6 +21,8 @@ calibration/
 sanctum/
 shortcuts.json
 party-profile.json
+party-cache.json
+party-cache.tmp
 control.json
 viewer-status.json
 viewer-error.txt

@@ -309,15 +309,15 @@ class MapEngine:
         # The second route is dashed so both remain visible where they overlap.
         for start in ((0,1) if entrance is None else (entrance,)):
             color=('#ffb12f','#726bff')[start]
-            width=6
+            width=3
             for segment in self.route(start,keys,goal,eggs,rooms,exit)['segments']:
                 points=[screen_xy(p) for p in segment]
                 if len(points)<2:continue
                 if start==0:
-                    draw.line(points,fill='#101522',width=width+4,joint='curve')
+                    draw.line(points,fill='#101522',width=width+2,joint='curve')
                     draw.line(points,fill=color,width=width,joint='curve')
                 else:
-                    phase=0.;dash=width*2.5;period=dash*1.7
+                    phase=0.;dash=10.;period=17.
                     for a,b in zip(points,points[1:]):
                         length=math.dist(a,b)
                         cursor=0.
@@ -325,7 +325,7 @@ class MapEngine:
                             step=min(length-cursor,(dash if phase<dash else period)-phase)
                             if phase<dash:
                                 dash_points=[(a[0]+(b[0]-a[0])*t/length,a[1]+(b[1]-a[1])*t/length) for t in (cursor,cursor+step)]
-                                draw.line(dash_points,fill='#101522',width=width+4)
+                                draw.line(dash_points,fill='#101522',width=width+2)
                                 draw.line(dash_points,fill=color,width=width)
                             cursor+=step;phase=(phase+step)%period
         # Draw room symbols after scaling so they remain readable on the overlay.

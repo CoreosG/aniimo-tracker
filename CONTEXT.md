@@ -22,6 +22,8 @@
 
 **Party**: Up to three people sharing navigation through one invite code. Membership is independent of each person's run ledger.
 
+**Party restart recovery**: A brief reservation of party membership and shared layout across a relay restart. Members reconnect with their existing identities and code; locations must be observed again. It is not a permanent party or player history.
+
 **Username**: A player's chosen display name, not a game account or authentication credential.
 
 **Shared run**: One party navigation session. A new shared run discards the previous layout and all player locations without changing anyone's saved runs.
