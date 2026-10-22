@@ -149,6 +149,16 @@ class PartyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resumed['id'], first['id'])
         self.assertEqual(len(resumed['state']['members']), 2)
 
+    async def test_wrong_resume_secret_cannot_replace_a_live_members_connection(self):
+        host,first=await self.request(dict(type='create',username='Host'))
+        _,denied=await self.request(dict(type='resume',code=first['state']['code'],id=first['id'],token='x'*43))
+        self.assertEqual(denied,dict(type='error',code='session_expired'))
+        await host.send(json.dumps(dict(type='update',epoch=1,evidence=dict(layout=32,confidence=.9))))
+        state=await self.state_where(host,lambda s:s['layout']==32)
+        self.assertEqual(len(state['members']),1)
+        self.assertTrue(state['members'][0]['online'])
+        self.assertEqual(state['host'],first['id'])
+
     async def test_invalid_coordinates_cannot_enter_shared_state(self):
         host, first = await self.request(dict(type='create', username='Host', difficulty='Chaos'))
         await host.send(json.dumps(dict(type='update', epoch=1, evidence=dict(layout=32, confidence=.9))))

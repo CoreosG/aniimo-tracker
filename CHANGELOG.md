@@ -11,6 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Relay diagnostic timestamps, transport close codes and fixed disconnect/rejection
   categories, excluding arbitrary remote close text and private payloads.
 
+### Fixed
+
+- Authenticated party reconnects replace a half-open prior connection instead of
+  returning `already_connected` and stopping the desktop's recovery loop. Retired
+  transports cannot update or remove the resumed member. Real TCP fault tests
+  cover abrupt drops, one-way outages and repeated reconnects with position sync.
+
 ## [0.4.1] - 2026-10-22
 
 ### Added

@@ -24,6 +24,8 @@
 
 **Party restart recovery**: A brief reservation of party membership and shared layout across a relay restart. Members reconnect with their existing identities and code; locations must be observed again. It is not a permanent party or player history.
 
+**Party connection replacement**: A member proving the same private reconnect identity resumes their existing seat through a new connection. The retired connection cannot change that member's shared state or remove the seat.
+
 **Username**: A player's chosen display name, not a game account or authentication credential.
 
 **Shared run**: One party navigation session. A new shared run discards the previous layout and all player locations without changing anyone's saved runs.

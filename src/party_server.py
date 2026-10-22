@@ -122,6 +122,7 @@ class Relay:
             await socket.close(1013, 'Server busy'); return
         self.connections[address] += 1
         room = member = writer = None
+        previous_socket = None
         link = secrets.token_hex(6)
         ended = 'connection_closed'
         try:
@@ -153,7 +154,9 @@ class Relay:
                     member = room['members'].get(identity)
                     if member is None or not secrets.compare_digest(member['token_hash'], hashlib.sha256(token.encode()).hexdigest()):
                         member = None; raise ValueError('session_expired')
-                    if member['socket'] is not None: raise ValueError('already_connected')
+                    # A valid private token identifies the same seat even when
+                    # a broken network path leaves its old transport half-open.
+                    previous_socket = member['socket']
                     name = member['username']
                 else:
                     name = username(message.get('username'))
@@ -168,13 +171,27 @@ class Relay:
                 room['members'][member['id']] = member
                 if room['host'] is None: room['host'] = member['id']
             member['socket'] = socket
-            member['queue'] = asyncio.Queue(maxsize=1)
+            outgoing = asyncio.Queue(maxsize=1)
+            member['queue'] = outgoing
             await socket.send(json.dumps(dict(type='welcome', version=VERSION, id=member['id'],
                                               token=token, state=self.state(room))))
+            if member['socket'] is not socket:
+                ended='session_replaced'
+                await socket.send(json.dumps(dict(type='error',code='session_replaced')))
+                return
             self.room_event('member_connected', room, link=link, resumed=kind=='resume')
-            writer = asyncio.create_task(self.write(socket, member['queue'], room, link))
+            writer = asyncio.create_task(self.write(socket, outgoing, room, link))
             room['dirty'] = True
+            if previous_socket is not None:
+                diagnostic('transport_replaced',room=room['diagnostic_id'],link=link)
+                try:
+                    async with asyncio.timeout(2):
+                        await previous_socket.send(json.dumps(dict(type='error',code='session_replaced')))
+                        await previous_socket.close(1000,'Session resumed')
+                except (ConnectionClosed,TimeoutError):pass
             async for raw in socket:
+                if member['socket'] is not socket:
+                    ended='session_replaced';break
                 message = decode_message(raw)
                 now = time.monotonic()
                 member['credit'] = min(8., member['credit']+(now-member['rate_time'])*3.)-1

@@ -97,6 +97,9 @@ prove the remote UI displayed it. `writer_failed` identifies a closed or slow
 transport. Random diagnostic `room` and per-connection `link` IDs correlate these
 events without exposing invite codes, member identities, names, tokens or IPs.
 IDs are discarded on restart. No coordinates or screenshots are logged.
+`transport_replaced` records an authenticated resume replacing an older socket
+for the same member. The old socket receives the fixed `session_replaced` code
+and closes; its later messages or cleanup cannot remove the resumed member.
 Every event includes a Unix `at` timestamp. Disconnects include a numeric
 WebSocket `close_code` and fixed `reason` category; arbitrary remote close text
 is never recorded. `request_rejected` reports only stable validation/error codes,
@@ -125,6 +128,11 @@ An online member's checkpoint expires after 60 seconds; offline members retain
 their existing reconnect deadline. After a quick restart, the existing desktop
 client reconnects with its original identity/code. Everyone initially appears
 offline and positions must be observed again. Long outages expire the party.
+If the old connection is still half-open, a valid reconnect token replaces it
+instead of returning `already_connected`. Authentication is checked before any
+replacement. Only one transport owns the seat; retired transports cannot publish
+updates or remove the current member. An actually live retired client receives
+`session_replaced` and stops retrying, preventing competing reconnect loops.
 Explicit Leave removes the reservation from the next checkpoint; an abrupt
 crash can lose changes since the last completed write. This is a small recovery
 cache, not a database of player history. Expired data is removed on the next

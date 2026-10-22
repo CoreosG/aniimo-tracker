@@ -37,6 +37,10 @@ observation clears local presence and publishes a null location. Player trails
 are bounded client-side paths, with no trail history or extra calculation on the
 relay. Explicit update restarts use a single-use DPAPI-protected resume handoff
 and disconnect without sending Leave; ordinary closes retain Leave behavior.
+Authenticated reconnects replace the seat's prior transport even when it remains
+half-open. Each handler keeps its own outgoing queue, and incoming updates and
+cleanup require current socket ownership. The retired socket receives a fixed
+terminal error before closure, so a live old client cannot fight the replacement.
 
 The relay optionally checkpoints membership and shared layout through `party_cache.py`.
 An atomic private file holds at most the configured room limit, no coordinates,
