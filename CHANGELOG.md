@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-10-22
+
+### Fixed
+
+- Reject outdoor full maps with broad green terrain before interpreting shared
+  portal icons as a dungeon layout. Outdoor readings hide previous navigation;
+  a subsequent dungeon map restores it normally.
+
 ## [0.3.8] - 2026-10-22
 
 ### Fixed
@@ -167,7 +175,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.9...HEAD
+[0.3.9]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...v0.3.6

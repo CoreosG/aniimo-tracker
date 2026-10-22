@@ -33,7 +33,23 @@ def entry_map(covered=True, controls=True, fully_covered=False, scale=1., revers
     return image
 
 
+def outdoor_map():
+    image=entry_map(covered=False,reverse=True)
+    ImageDraw.Draw(image).polygon([(700,350),(1050,400),(1000,570),(750,550)],fill=(116,130,90))
+    return image
+
+
 class PortalOcclusionTests(unittest.TestCase):
+    def test_outdoor_terrain_with_both_portals_does_not_confirm_a_dungeon(self):
+        image=outdoor_map()
+        with tempfile.TemporaryDirectory() as directory:
+            detector=Detector(directory)
+            for size in ((1280,720),(1920,1080),(3840,2160)):
+                with self.subTest(size=size):
+                    reading=detector.detect(image.resize(size,Image.Resampling.LANCZOS))
+                    self.assertEqual(reading['candidates'],[])
+                    self.assertTrue(reading['map_screen'])
+
     def test_default_portals_use_the_same_game_coordinates_at_720p_and_4k(self):
         with tempfile.TemporaryDirectory() as directory:
             detector = Detector(directory)

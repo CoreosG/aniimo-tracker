@@ -369,6 +369,13 @@ class Detector:
             return reading
         if not (self.folder/'orange.png').exists() and not self.is_map_screen(image):
             return dict(candidates=[],map_screen=False,reason='Full map is not open; waiting for the game map.')
+        # The island uses the same portals and zoom controls as a dungeon.
+        # Broad green terrain is outdoor evidence; tiny party icons are not.
+        terrain=np.asarray(image.convert('RGB').resize((480,270)),dtype=np.int16)[25:255,48:]
+        red,green,blue=terrain[:,:,0],terrain[:,:,1],terrain[:,:,2]
+        vegetation=(green>red+5)&(green>blue+5)&(np.ptp(terrain,axis=2)>25)
+        if vegetation.mean()>.025:
+            return dict(candidates=[],map_screen=True,outside=True,reason='Outside dungeon')
         frame = np.asarray(image.convert('RGB'))
         result = {}
         scores = {}

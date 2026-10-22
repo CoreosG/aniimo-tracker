@@ -535,6 +535,11 @@ class SanctumPanel:
                 # confident minimap position. Key toggles are only hints.
                 self.map_open=False
                 self.scan_until=0
+            if reading.get('outside'):
+                self.outdoors=True;self.outdoor_votes=2
+                self.player=None;self.position_time=0
+                self.map_feedback='Outside dungeon';self.status.set(self.map_feedback)
+                continue
             if reading.get('minimap'):
                 automatic=reading.get('automatic') or {}
                 if automatic.get('kind')=='outside':
