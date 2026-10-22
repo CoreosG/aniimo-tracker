@@ -78,6 +78,20 @@ class PartyTests(unittest.IsolatedAsyncioTestCase):
         for private in ('PrivateHostName', 'PrivatePeerName', first['state']['code'], first['id'], first['token'], joined['token']):
             self.assertNotIn(private, output)
 
+    async def test_disconnect_diagnostics_report_transport_code_without_private_reason(self):
+        host,first=await self.request(dict(type='create',username='Host'))
+        peer,_=await self.request(dict(type='join',username='Peer',code=first['state']['code']))
+        await self.state_where(host,lambda s:len(s['members'])==2)
+        with self.assertLogs('party.relay',level='INFO') as logs:
+            await peer.close(1008,'Private arbitrary reason')
+            await self.state_where(host,lambda s:any(not p['online'] for p in s['members']))
+        events=[json.loads(record.getMessage()) for record in logs.records]
+        closed=next(e for e in events if e['event']=='member_disconnected')
+        self.assertEqual(closed['close_code'],1008)
+        self.assertEqual(closed['reason'],'connection_closed')
+        self.assertIsInstance(closed['at'],int)
+        self.assertNotIn('Private arbitrary reason','\n'.join(logs.output))
+
     async def test_stronger_layout_replaces_for_all_and_invalidates_old_positions(self):
         alice, first = await self.request(dict(type='create', username='Alice', difficulty='Chaos'))
         beto, _ = await self.request(dict(type='join', username='Beto', code=first['state']['code']))

@@ -23,7 +23,7 @@ LOG = logging.getLogger('party.relay')
 
 def diagnostic(event, **fields):
     # Callers supply only fixed event names, random diagnostic IDs and numbers.
-    LOG.info(json.dumps(dict(event=event, **fields), separators=(',', ':')))
+    LOG.info(json.dumps(dict(event=event, at=int(time.time()), **fields), separators=(',', ':')))
 
 # Published ranges: https://www.cloudflare.com/ips-v4/ and /ips-v6/ (2026-10-21).
 CF_NETWORKS=tuple(ipaddress.ip_network(cidr) for cidr in (
@@ -122,6 +122,8 @@ class Relay:
             await socket.close(1013, 'Server busy'); return
         self.connections[address] += 1
         room = member = writer = None
+        link = secrets.token_hex(6)
+        ended = 'connection_closed'
         try:
             message = decode_message(await asyncio.wait_for(socket.recv(), 10))
             if 'version' in message and (type(message['version']) is not int or message['version']!=VERSION):
@@ -167,7 +169,6 @@ class Relay:
                 if room['host'] is None: room['host'] = member['id']
             member['socket'] = socket
             member['queue'] = asyncio.Queue(maxsize=1)
-            link = secrets.token_hex(6)
             await socket.send(json.dumps(dict(type='welcome', version=VERSION, id=member['id'],
                                               token=token, state=self.state(room))))
             self.room_event('member_connected', room, link=link, resumed=kind=='resume')
@@ -179,18 +180,24 @@ class Relay:
                 member['credit'] = min(8., member['credit']+(now-member['rate_time'])*3.)-1
                 member['rate_time'] = now
                 if member['credit'] < 0:
+                    ended = 'rate_limit'
                     await socket.close(1008, 'Too many updates'); break
-                if message.get('type') == 'leave': break
+                if message.get('type') == 'leave':
+                    ended = 'leave';break
                 await self.command(room, member, message)
         except (ValueError, TypeError, KeyError, RecursionError, OverflowError) as exc:
             # Return stable codes only; never echo arbitrary client input.
             codes = {'party_full', 'party_not_found', 'server_full', 'session_expired',
                      'invalid_difficulty', 'already_connected', 'invalid_message'}
             code = str(exc) if str(exc) in codes else 'invalid_message'
+            ended = code
             self.metrics['rejected_messages'] += 1
+            diagnostic('request_rejected', link=link, reason=code,
+                       **({'room':room['diagnostic_id']} if room is not None else {}))
             try: await socket.send(json.dumps(dict(type='error', code=code)))
             except ConnectionClosed: pass
-        except (ConnectionClosed, TimeoutError): pass
+        except ConnectionClosed: pass
+        except TimeoutError: ended = 'timeout'
         finally:
             if writer is not None:
                 writer.cancel(); await asyncio.gather(writer, return_exceptions=True)
@@ -199,7 +206,7 @@ class Relay:
                 room['dirty'] = True
                 if 'message' in locals() and isinstance(message, dict) and message.get('type') == 'leave':
                     room['members'].pop(member['id'], None)
-                self.room_event('member_disconnected', room, link=link)
+                self.room_event('member_disconnected', room, link=link, reason=ended, close_code=socket.close_code)
                 self.clean_room(room)
             self.connections[address] -= 1
             if not self.connections[address]: del self.connections[address]

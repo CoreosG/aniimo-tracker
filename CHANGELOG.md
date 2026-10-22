@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Relay diagnostic timestamps, transport close codes and fixed disconnect/rejection
+  categories, excluding arbitrary remote close text and private payloads.
+
 ## [0.4.1] - 2026-10-22
 
 ### Added

@@ -97,6 +97,10 @@ prove the remote UI displayed it. `writer_failed` identifies a closed or slow
 transport. Random diagnostic `room` and per-connection `link` IDs correlate these
 events without exposing invite codes, member identities, names, tokens or IPs.
 IDs are discarded on restart. No coordinates or screenshots are logged.
+Every event includes a Unix `at` timestamp. Disconnects include a numeric
+WebSocket `close_code` and fixed `reason` category; arbitrary remote close text
+is never recorded. `request_rejected` reports only stable validation/error codes,
+allowing failed reconnect attempts to be distinguished from transport failures.
 
 Once per minute, `health` summarizes room/connection counts and interval totals
 for full snapshots, position deltas, coalesced full states, rejected messages
