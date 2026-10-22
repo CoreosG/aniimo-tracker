@@ -49,6 +49,35 @@ class PartyTests(unittest.IsolatedAsyncioTestCase):
                     self.states[client]=updated_state(self.states[client],message)
                     if predicate(self.states[client]):return self.states[client]
 
+    async def test_periodic_full_snapshot_repairs_a_missed_roster_without_rejoining(self):
+        self.relay.state_interval = .5
+        host, first = await self.request(dict(type='create', username='Host'))
+        await self.state_where(host, lambda s:len(s['members']) == 1)
+        await self.request(dict(type='join', username='Peer', code=first['state']['code']))
+        await self.state_where(host, lambda s:len(s['members']) == 2)
+        # Discard the membership notification, as a stale client snapshot would.
+        self.states[host] = first['state']
+        repaired = await self.state_where(host, lambda s:len(s['members']) == 2)
+        self.assertEqual(repaired['members'][0]['id'], first['id'])
+
+    async def test_diagnostics_correlate_roster_delivery_without_private_fields(self):
+        with self.assertLogs('party.relay', level='INFO') as captured:
+            host, first = await self.request(dict(type='create', username='PrivateHostName'))
+            await self.state_where(host, lambda s:len(s['members']) == 1)
+            peer, joined = await self.request(dict(type='join', username='PrivatePeerName', code=first['state']['code']))
+            await self.state_where(host, lambda s:len(s['members']) == 2)
+            await peer.close()
+            await self.state_where(host, lambda s:any(not p['online'] for p in s['members']))
+        events = [json.loads(record.getMessage()) for record in captured.records]
+        self.assertTrue(any(e['event']=='member_connected' and e['members']==2 for e in events))
+        self.assertTrue(any(e['event']=='roster_sent' and e['members']==2 for e in events))
+        self.assertTrue(any(e['event']=='member_disconnected' for e in events))
+        room_ids = {e['room'] for e in events if 'room' in e}
+        self.assertEqual(len(room_ids), 1)
+        output = '\n'.join(captured.output)
+        for private in ('PrivateHostName', 'PrivatePeerName', first['state']['code'], first['id'], first['token'], joined['token']):
+            self.assertNotIn(private, output)
+
     async def test_stronger_layout_replaces_for_all_and_invalidates_old_positions(self):
         alice, first = await self.request(dict(type='create', username='Alice', difficulty='Chaos'))
         beto, _ = await self.request(dict(type='join', username='Beto', code=first['state']['code']))

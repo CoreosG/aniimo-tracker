@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Privacy-safe relay diagnostics for membership, roster transport delivery and
+  writer failures, with bounded Docker logs and aggregate minute counters.
+
+### Fixed
+
+- Relay sends a full party snapshot every 15 seconds, allowing clients to recover
+  from a missed membership snapshot without recreating the party. This is a
+  recovery measure; the reported intermittent one-way disconnect remains under
+  investigation.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added

@@ -16,6 +16,13 @@ from websockets.exceptions import ConnectionClosed
 from map_catalog import DIFFICULTIES, layouts_for
 from party_protocol import COLORS, VERSION, username
 
+LOG = logging.getLogger('party.relay')
+
+
+def diagnostic(event, **fields):
+    # Callers supply only fixed event names, random diagnostic IDs and numbers.
+    LOG.info(json.dumps(dict(event=event, **fields), separators=(',', ':')))
+
 # Published ranges: https://www.cloudflare.com/ips-v4/ and /ips-v6/ (2026-10-21).
 CF_NETWORKS=tuple(ipaddress.ip_network(cidr) for cidr in (
     '173.245.48.0/20','103.21.244.0/22','103.22.200.0/22','103.31.4.0/22',
@@ -60,6 +67,13 @@ class Relay:
         self.connections = Counter()
         self.max_rooms, self.max_connections, self.per_ip = max_rooms, max_connections, per_ip
         self.trust_proxy=trust_proxy
+        self.state_interval = 15.
+        self.metrics = Counter()
+        self.last_summary = time.monotonic()
+
+    def room_event(self, event, room, **fields):
+        diagnostic(event, room=room['diagnostic_id'], members=len(room['members']),
+                   online=sum(p['socket'] is not None for p in room['members'].values()), **fields)
 
     def state(self, room):
         return dict(code=room['code'], difficulty=room['difficulty'], epoch=room['epoch'],
@@ -99,7 +113,8 @@ class Relay:
                 code = ''.join(secrets.choice(alphabet) for _ in range(8))
                 while code in self.rooms: code = ''.join(secrets.choice(alphabet) for _ in range(8))
                 room = dict(code=code, difficulty=difficulty, members={}, epoch=1, revision=0,
-                            layout=None, confidence=0., source=None, host=None, dirty=False, positions_dirty=False)
+                            layout=None, confidence=0., source=None, host=None, dirty=False, positions_dirty=False,
+                            diagnostic_id=secrets.token_hex(6), last_full=0.)
                 self.rooms[code] = room
             elif kind in ('join', 'resume'):
                 code=message.get('code')
@@ -128,9 +143,11 @@ class Relay:
                 if room['host'] is None: room['host'] = member['id']
             member['socket'] = socket
             member['queue'] = asyncio.Queue(maxsize=1)
+            link = secrets.token_hex(6)
             await socket.send(json.dumps(dict(type='welcome', version=VERSION, id=member['id'],
                                               token=member['token'], state=self.state(room))))
-            writer = asyncio.create_task(self.write(socket, member['queue']))
+            self.room_event('member_connected', room, link=link, resumed=kind=='resume')
+            writer = asyncio.create_task(self.write(socket, member['queue'], room, link))
             room['dirty'] = True
             async for raw in socket:
                 message = decode_message(raw)
@@ -146,6 +163,7 @@ class Relay:
             codes = {'party_full', 'party_not_found', 'server_full', 'session_expired',
                      'invalid_difficulty', 'already_connected', 'invalid_message'}
             code = str(exc) if str(exc) in codes else 'invalid_message'
+            self.metrics['rejected_messages'] += 1
             try: await socket.send(json.dumps(dict(type='error', code=code)))
             except ConnectionClosed: pass
         except (ConnectionClosed, TimeoutError): pass
@@ -157,6 +175,7 @@ class Relay:
                 room['dirty'] = True
                 if 'message' in locals() and isinstance(message, dict) and message.get('type') == 'leave':
                     room['members'].pop(member['id'], None)
+                self.room_event('member_disconnected', room, link=link)
                 self.clean_room(room)
             self.connections[address] -= 1
             if not self.connections[address]: del self.connections[address]
@@ -166,6 +185,7 @@ class Relay:
         for identity, member in list(room['members'].items()):
             if member['socket'] is None and now-member['disconnected'] > 60:
                 del room['members'][identity]; room['dirty'] = True
+                self.room_event('reservation_expired', room)
         if not room['members']:
             self.rooms.pop(room['code'], None)
         elif room['host'] not in room['members']:
@@ -218,20 +238,38 @@ class Relay:
                     position_layout == room['layout']):
                 member.update(position=position, seen=time.monotonic()); room['positions_dirty'] = True
 
-    async def write(self, socket, queue):
+    async def write(self, socket, queue, room, link):
+        roster = None
         try:
             while True:
-                _, payload = await queue.get()
+                full, payload = await queue.get()
                 async with asyncio.timeout(2): await socket.send(payload)
-        except (ConnectionClosed, TimeoutError): await socket.close(1013, 'Slow connection')
+                self.metrics['full_sent' if full else 'positions_sent'] += 1
+                if full:
+                    snapshot = json.loads(payload)['state']
+                    signature = tuple((p['id'], p['online']) for p in snapshot['members'])
+                    if signature != roster:
+                        roster = signature
+                        diagnostic('roster_sent', room=room['diagnostic_id'], link=link,
+                                   members=len(signature), online=sum(online for _, online in signature))
+        except (ConnectionClosed, TimeoutError):
+            self.metrics['writer_failures'] += 1
+            self.room_event('writer_failed', room, link=link)
+            await socket.close(1013, 'Slow connection')
 
     async def pump(self):
         while True:
             await asyncio.sleep(.25)
+            now = time.monotonic()
+            if now-self.last_summary >= 60:
+                diagnostic('health', rooms=len(self.rooms), connections=sum(self.connections.values()), **self.metrics)
+                self.metrics.clear()
+                self.last_summary = now
             for room in list(self.rooms.values()):
                 self.clean_room(room)
-                if not room['dirty'] and not room['positions_dirty']: continue
-                full = room['dirty']
+                full = room['dirty'] or now-room['last_full'] >= self.state_interval
+                if not full and not room['positions_dirty']: continue
+                if full: room['last_full'] = now
                 room['dirty'] = room['positions_dirty'] = False
                 snapshot = self.state(room)
                 full_payload = json.dumps(dict(type='state', state=snapshot), separators=(',', ':')) if full else None
@@ -243,6 +281,7 @@ class Relay:
                     queue = member['queue']
                     if member['socket'] is None or queue is None: continue
                     pending_full = queue.get_nowait()[0] if queue.full() else False
+                    if pending_full: self.metrics['full_coalesced'] += 1
                     if pending_full and not full:
                         if full_payload is None: full_payload=json.dumps(dict(type='state',state=snapshot),separators=(',', ':'))
                         queue.put_nowait((True,full_payload))
@@ -273,4 +312,5 @@ if __name__ == '__main__':
     parser.add_argument('--per-ip', type=int, default=int(os.environ.get('PARTY_PER_IP', '30')))
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING)
+    LOG.setLevel(logging.INFO)
     asyncio.run(main(args.host, args.port, args.max_rooms, args.max_connections, args.per_ip))

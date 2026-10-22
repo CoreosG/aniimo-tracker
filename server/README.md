@@ -59,7 +59,8 @@ used for a trusted LAN; public deployments should use TLS.
 - Three incoming updates per second per connection, with a small burst allowance.
   The desktop normally sends at most two per second. Frames are limited to 2 KiB.
 - Position changes are batched every 250 ms into compact deltas. Membership and
-  layout changes send full state. Each recipient has one replaceable pending
+  layout changes send full state; an idle party also receives a full snapshot
+  every 15 seconds to repair a missed roster notification. Each recipient has one replaceable pending
   update; a slow reader is disconnected rather than delaying other rooms.
 - No WebSocket compression, image processing, screenshot uploads or persistent
   player records. Stale positions fade and disappear after 30 seconds.
@@ -84,6 +85,24 @@ Run `python server/load_test.py --url ws://127.0.0.1:8787/party --players 300`
 against a **separate test instance**, with its per-IP limit increased. The test
 reports delivered updates, latency, throughput and disconnects. Measure the
 proxy and internet path separately before increasing production limits.
+
+## Diagnostics
+
+`docker compose -p eggheist-party -f server/compose.yml logs --since 10m party`
+shows JSON events from `party.relay`. `member_connected`, `member_disconnected`
+and `reservation_expired` record membership changes. `roster_sent` confirms that
+a changed roster was handed to a connection's WebSocket transport; it does not
+prove the remote UI displayed it. `writer_failed` identifies a closed or slow
+transport. Random diagnostic `room` and per-connection `link` IDs correlate these
+events without exposing invite codes, member identities, names, tokens or IPs.
+IDs are discarded on restart. No coordinates or screenshots are logged.
+
+Once per minute, `health` summarizes room/connection counts and interval totals
+for full snapshots, position deltas, coalesced full states, rejected messages
+and writer failures. There are no per-position logs or stored player histories.
+Compose rotates logs at two files of 5 MB each. Detailed diagnostics are not
+exposed through the public health endpoint. The relay runs as one process;
+deploying a new image restarts it and expires existing parties.
 
 ## Shared-run rules
 
