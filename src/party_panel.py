@@ -250,9 +250,11 @@ class PartyPanel:
             if event['type']=='error':
                 self.leave();self.status.set(ERRORS.get(event['code'],'Party connection failed.'));continue
             if event['type']=='reconnecting':
-                self.connected=False;self.status.set('Reconnecting…');self.controls();panel.overlay_dirty=True;continue
+                self.connected=False
+                self.status.set('Reconnecting · party updates stopped' if event.get('reason')=='stale_state' else 'Reconnecting…')
+                self.controls();panel.overlay_dirty=True;continue
             old=self.state
-            if event['type']=='welcome':self.identity=event['id'];self.connected=True
+            if event.get('id') is not None:self.identity=event['id'];self.connected=True
             self.state=event['state'];self.received_at=now
             if old is None and context is not None:self.run_epoch=self.state['epoch']
             if self.pending_reset is None or self.state['epoch']>self.pending_reset:self.difficulty.set(self.state['difficulty'])

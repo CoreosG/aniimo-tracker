@@ -173,7 +173,7 @@ class Relay:
             member['socket'] = socket
             outgoing = asyncio.Queue(maxsize=1)
             member['queue'] = outgoing
-            await socket.send(json.dumps(dict(type='welcome', version=VERSION, id=member['id'],
+            await socket.send(json.dumps(dict(type='welcome', version=VERSION, state_interval=self.state_interval, id=member['id'],
                                               token=token, state=self.state(room))))
             if member['socket'] is not socket:
                 ended='session_replaced'

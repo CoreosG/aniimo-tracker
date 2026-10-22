@@ -82,6 +82,20 @@ class UntrustedPartyTests(unittest.TestCase):
             finally:
                 client.close()
 
+    def test_invalid_refresh_capabilities_are_rejected_before_entering_the_receive_loop(self):
+        for interval in (True,0,-1,61,float('nan'),float('inf'),[], '15'):
+            with self.subTest(interval=repr(interval)):
+                reply=dict(welcome(state()),state_interval=interval)
+                with MaliciousRelay(reply) as relay:
+                    client=PartyClient()
+                    try:
+                        client.start(relay.url,'Player')
+                        event=client.events.get(timeout=2)
+                        self.assertEqual(event,dict(type='reconnecting'))
+                    finally:
+                        client.close()
+                        if client.thread:client.thread.join(timeout=3)
+
     def test_full_state_projection_rejects_bad_presence_identity_and_evidence(self):
         cases = []
         for key, value in [('host', []), ('host', 'f'*16), ('source', 'https://evil.invalid'),

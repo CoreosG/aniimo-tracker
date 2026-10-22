@@ -41,6 +41,14 @@ Authenticated reconnects replace the seat's prior transport even when it remains
 half-open. Each handler keeps its own outgoing queue, and incoming updates and
 cleanup require current socket ownership. The retired socket receives a fixed
 terminal error before closure, so a live old client cannot fight the replacement.
+The relay advertises its periodic full-state interval in the welcome message.
+The desktop validates the optional capability and tracks full-state receipt
+separately from position deltas, control pings and the incoming flood budget.
+Missing full states trigger reconnect after the greater of 45 seconds or three
+advertised intervals. Legacy relays without that capability retain idle behavior.
+Each network-to-UI snapshot carries the validated connection identity, so a busy
+UI can restore connected state even if its bounded queue displaced the welcome.
+The reconnect token remains private to the worker and never enters UI events.
 
 The relay optionally checkpoints membership and shared layout through `party_cache.py`.
 An atomic private file holds at most the configured room limit, no coordinates,

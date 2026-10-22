@@ -65,6 +65,24 @@ class PartyNavigationTests(unittest.TestCase):
             for _ in range(count):
                 self.app.sanctum.scan();self.until(lambda:not self.app.sanctum.busy);time.sleep(.4)
 
+    def test_busy_ui_recovers_connection_identity_after_welcome_leaves_the_bounded_queue(self):
+        party=self.app.party
+        party.mode.set('custom');party.address.set(self.url);party.name.set('Peer')
+        party.code.set(self.host_state['code'])
+        baseline=self.app.ledger.summary()
+        party.connect(join=True)
+        # Simulate a busy main thread while the real network worker continues
+        # receiving ordinary, rate-limited roster updates. No Tk polling here.
+        for index in range(10):
+            self.host.publish(dict(type='update',epoch=1,username=f'Host {index}'))
+            time.sleep(.6)
+        self.assertEqual(party.client.events.qsize(),8)
+        self.app.update()
+        self.assertTrue(party.connected)
+        self.assertIsNotNone(party.identity)
+        self.assertEqual(next(p['username'] for p in party.state['members'] if p['id']==party.identity),'Peer')
+        self.assertEqual(self.app.ledger.summary(),baseline)
+
     def test_outdoor_guest_keeps_only_shared_layout_header_across_party_difficulty_change(self):
         from PIL import Image
         panel=self.app.sanctum

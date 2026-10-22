@@ -51,6 +51,36 @@ class FaultProxy:
         await asyncio.gather(*tasks,return_exceptions=True)
 
 
+class SilentDataProxy:
+    """Freeze application messages while WebSocket control traffic stays healthy."""
+    def __init__(self, port, legacy=False):
+        self.port=port;self.links=[];self.legacy=legacy
+
+    async def start(self):
+        self.server=await serve(self.forward,'127.0.0.1',0,ping_interval=.1,ping_timeout=.3,close_timeout=.2)
+        return f'ws://127.0.0.1:{self.server.sockets[0].getsockname()[1]}/party'
+
+    async def forward(self, socket):
+        async with connect(f'ws://127.0.0.1:{self.port}/party',close_timeout=.2) as upstream:
+            link=dict(socket=socket,silent=False);self.links.append(link)
+            async def copy(source,destination,downstream=False):
+                async for raw in source:
+                    if downstream and link['silent']:continue
+                    if downstream and self.legacy:
+                        message=json.loads(raw)
+                        if message['type']=='welcome':message.pop('state_interval',None)
+                        raw=json.dumps(message)
+                    await destination.send(raw)
+            workers=[asyncio.create_task(copy(socket,upstream)),asyncio.create_task(copy(upstream,socket,True))]
+            try:await asyncio.wait(workers,return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                for worker in workers:worker.cancel()
+                await asyncio.gather(*workers,return_exceptions=True)
+
+    async def close(self):
+        self.server.close();await self.server.wait_closed()
+
+
 class PartyRecoveryTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.relay=Relay()
@@ -84,6 +114,64 @@ class PartyRecoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resumed['id'],first['id'])
         self.assertEqual(resumed['state']['code'],first['state']['code'])
         self.assertEqual(len(resumed['state']['members']),1)
+
+    async def test_silent_party_data_stall_recovers_even_while_pings_and_outgoing_positions_work(self):
+        self.relay.state_interval=.1
+        await self.proxy.close()
+        self.proxy=SilentDataProxy(self.server.sockets[0].getsockname()[1])
+        url=await self.proxy.start()
+        self.client.state_timeout=1.5
+        host_url=f'ws://127.0.0.1:{self.server.sockets[0].getsockname()[1]}/party'
+        async with connect(host_url) as host:
+            await host.send('{"type":"create","username":"Host"}')
+            first=json.loads(await host.recv());state=first['state']
+            self.client.start(url,'Peer',code=state['code'])
+            peer=await self.event(lambda e:e['type']=='welcome')
+            await host.send(json.dumps(dict(type='update',epoch=1,evidence=dict(layout=32,confidence=.9))))
+            await self.event(lambda e:e.get('state',{}).get('layout')==32)
+            self.proxy.links[0]['silent']=True
+            self.client.publish(dict(type='update',epoch=1,revision=1,layout=32,position=[21,43]))
+            async with asyncio.timeout(1):
+                while True:
+                    message=json.loads(await host.recv());state=updated_state(state,message)
+                    if any(p['id']==peer['id'] and p['position']==[21,43] for p in state['members']):break
+                pong=await self.proxy.links[0]['socket'].ping()
+                await pong
+            # Other players can still see this client's movement, but its own
+            # incoming party messages are frozen despite successful Ping/Pong.
+            await host.send(json.dumps(dict(type='update',epoch=1,revision=1,layout=32,position=[61,72])))
+            reconnecting=await self.event(lambda e:e['type']=='reconnecting')
+            self.assertEqual(reconnecting.get('reason'),'stale_state')
+            resumed=await self.event(lambda e:e['type']=='welcome')
+            self.assertEqual(resumed['id'],peer['id'])
+            self.assertTrue(any(p['id']==first['id'] and p['position']==[61,72] for p in resumed['state']['members']))
+
+    async def test_legacy_relay_without_refresh_capability_can_remain_idle(self):
+        self.relay.state_interval=.1
+        await self.proxy.close()
+        self.proxy=SilentDataProxy(self.server.sockets[0].getsockname()[1],legacy=True)
+        self.client.state_timeout=.2
+        self.client.start(await self.proxy.start(),'Peer')
+        await self.event(lambda e:e['type']=='welcome')
+        self.proxy.links[0]['silent']=True
+        await asyncio.sleep(.8)
+        while True:
+            try:event=self.client.events.get_nowait()
+            except queue.Empty:break
+            self.assertNotIn(event['type'],('reconnecting','error'))
+        async with asyncio.timeout(1):
+            pong=await self.proxy.links[0]['socket'].ping();await pong
+        self.assertTrue(self.client.thread.is_alive())
+
+    async def test_healthy_periodic_full_states_keep_an_idle_client_connected(self):
+        self.relay.state_interval=.1
+        self.client.state_timeout=.3
+        self.client.start(self.url,'Peer')
+        first=await self.event(lambda e:e['type']=='welcome')
+        await asyncio.sleep(1.)
+        seen=await self.event(lambda e:e['type']=='state')
+        self.assertEqual(seen['state']['code'],first['state']['code'])
+        self.assertEqual(len(self.proxy.links),1)
 
     async def test_repeated_abrupt_and_half_open_drops_restore_two_way_positions(self):
         url=f'ws://127.0.0.1:{self.server.sockets[0].getsockname()[1]}/party'

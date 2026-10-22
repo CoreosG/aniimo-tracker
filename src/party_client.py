@@ -11,6 +11,10 @@ from map_catalog import layouts_for
 from party_protocol import COLORS, VERSION, server_url, username
 
 
+class _StalePartyState(TimeoutError):
+    """The relay's advertised periodic full states stopped arriving."""
+
+
 def _identity(value, optional=False):
     if optional and value is None:
         return None
@@ -151,6 +155,7 @@ def _welcome(reply):
 
 class PartyClient:
     def __init__(self):
+        self.state_timeout = 45.
         self.events = queue.Queue(maxsize=8)
         self.commands = queue.Queue(maxsize=4)
         self.stop = threading.Event()
@@ -213,6 +218,9 @@ class PartyClient:
                     if reply.get('type') == 'error':
                         self.event(dict(type='error', code=_error_code(reply))); return
                     identity, token, current_state = _welcome(reply)
+                    interval = reply.get('state_interval')
+                    state_timeout = max(self.state_timeout,3*_number(interval,.1,60)) if interval is not None else None
+                    last_state_at = time.monotonic()
                     hello = dict(type='resume', id=identity, token=token, code=current_state['code'])
                     # Never put the secret in UI events. Only an explicit update
                     # may persist a single-use, DPAPI-encrypted handoff.
@@ -224,6 +232,8 @@ class PartyClient:
                     while not self.stop.is_set():
                         while not self.commands.empty(): socket.send(json.dumps(self.commands.get_nowait()))
                         now = time.monotonic()
+                        if state_timeout is not None and now-last_state_at >= state_timeout:
+                            raise _StalePartyState()
                         if now-sent_at >= .5:
                             with self.lock: message, self.latest = self.latest, None
                             if message is not None: socket.send(json.dumps(message, separators=(',', ':')))
@@ -241,11 +251,18 @@ class PartyClient:
                         reply = json.loads(raw)
                         if reply.get('type') in ('state','positions'):
                             current_state=updated_state(current_state,reply)
-                            self.event(dict(type='state', state=current_state))
+                            if reply['type']=='state':last_state_at=now
+                            # The bounded UI queue may discard the original
+                            # welcome while Tk is busy. Every snapshot must be
+                            # sufficient to recover this connection's identity.
+                            self.event(dict(type='state', id=identity, state=current_state))
                         elif reply.get('type') == 'error':
                             self.event(dict(type='error', code=_error_code(reply))); return
                     if not self.preserve_on_close:socket.send('{"type":"leave"}')
-            except Exception:
-                if not self.stop.is_set(): self.event(dict(type='reconnecting'))
+            except Exception as exc:
+                if not self.stop.is_set():
+                    event=dict(type='reconnecting')
+                    if isinstance(exc,_StalePartyState):event['reason']='stale_state'
+                    self.event(event)
             if self.stop.wait(delay*random.uniform(.7,1.3)): return
             delay = min(15, delay*2)

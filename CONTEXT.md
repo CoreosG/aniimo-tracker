@@ -26,6 +26,8 @@
 
 **Party connection replacement**: A member proving the same private reconnect identity resumes their existing seat through a new connection. The retired connection cannot change that member's shared state or remove the seat.
 
+**Party data stall**: Shared party state stops reaching a player while the underlying connection may still exchange control messages or outgoing movement. Recovery requires a fresh connection and current shared state, independently of socket connectivity.
+
 **Username**: A player's chosen display name, not a game account or authentication credential.
 
 **Shared run**: One party navigation session. A new shared run discards the previous layout and all player locations without changing anyone's saved runs.

@@ -6,10 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-22
+
 ### Added
 
 - Relay diagnostic timestamps, transport close codes and fixed disconnect/rejection
   categories, excluding arbitrary remote close text and private payloads.
+- Client recovery for silent party-data stalls: a relay advertising periodic
+  full states is reconnected if those states stop arriving, even while WebSocket
+  Ping/Pong works. The default relay/client use a 45-second deadline. Older
+  self-hosted relays without the capability remain compatible.
 
 ### Fixed
 
@@ -17,6 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   returning `already_connected` and stopping the desktop's recovery loop. Retired
   transports cannot update or remove the resumed member. Real TCP fault tests
   cover abrupt drops, one-way outages and repeated reconnects with position sync.
+- One-way map updates can no longer remain silently frozen indefinitely on a
+  compatible relay. A full-state timeout reports that party updates stopped,
+  reconnects the client and restores the current roster and positions.
+- A busy UI can recover its party identity and connected state from subsequent
+  snapshots if newer updates displaced the original welcome event from its
+  bounded queue. This restores position sharing without rejoining manually.
 
 ## [0.4.1] - 2026-10-22
 

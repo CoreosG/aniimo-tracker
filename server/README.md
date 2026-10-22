@@ -63,6 +63,12 @@ used for a trusted LAN; public deployments should use TLS.
   layout changes send full state; an idle party also receives a full snapshot
   every 15 seconds to repair a missed roster notification. Each recipient has one replaceable pending
   update; a slow reader is disconnected rather than delaying other rooms.
+- The welcome message advertises `state_interval` (15 seconds by default).
+  Compatible desktop clients reconnect if full states stop for 45 seconds,
+  even if Ping/Pong still works. The deadline is at least three advertised
+  intervals; received position deltas cannot hide a missing roster refresh.
+  Older relays without this optional capability remain compatible and idle
+  connections do not acquire a new timeout.
 - No WebSocket compression, image processing, screenshot uploads or permanent
   player history. Stale positions fade and disappear after 30 seconds.
 - Idle WebSocket connections have ping timeouts; empty rooms disappear after
