@@ -269,6 +269,16 @@ Saving edits the original checkpoint and refreshes the graph. Older checkpoint e
 
 ## Local data and privacy
 
+Callback failures are retried and recorded locally in
+`%LOCALAPPDATA%\AniimoTracker\diagnostics\runtime.log`. Repeated identical errors
+are throttled; the current log and one rotated backup are each limited to
+256 KiB. These contain exception traces, without captured frames or local
+variables, and are never uploaded automatically.
+
+Position tracking requires a visible circular minimap. Opening Inventory or a
+chest/menu screen without it keeps the last known position instead of reading
+menu contents as movement. Include the minimap rim when calibrating its area.
+
 Run history, settings, screenshots and calibrations are stored under
 `%LOCALAPPDATA%\AniimoTracker`. Back up that folder to keep your history.
 Screenshot capture and OCR run locally. While connected to a party, the chosen

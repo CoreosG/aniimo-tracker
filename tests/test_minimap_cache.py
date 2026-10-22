@@ -20,6 +20,19 @@ def minimap_frame(model, left=25, size=(1093, 621)):
 
 
 class MinimapCacheTests(unittest.TestCase):
+    def test_cached_and_manual_areas_reject_menu_content_without_a_minimap_rim(self):
+        model=MapEngine(37)
+        valid=minimap_frame(model)
+        first=model.match_minimap(valid)
+        self.assertIsNotNone(first)
+        menu=Image.new('RGB',valid.size,(35,38,46))
+        menu.paste(model.reference.crop((220,220,380,380)),(25,25))
+        ImageDraw.Draw(menu).polygon([(105,98),(111,109),(99,109)],fill=(255,230,20))
+        self.assertIsNone(model.match_minimap(menu,previous=first['player']))
+        area=[25/menu.width,25/menu.height,185/menu.width,185/menu.height]
+        self.assertIsNone(model.match_minimap(menu,region=area,previous=first['player']))
+        self.assertIsNotNone(model.match_minimap(valid,region=area,previous=first['player']))
+
     def test_stable_hud_reuses_discovered_area_without_repeating_circle_search(self):
         model = MapEngine(37)
         frame = minimap_frame(model)

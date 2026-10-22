@@ -898,6 +898,8 @@ PT_BR.update({
     ' to confirm':' para confirmar',
     'Outside dungeon':'Fora da masmorra',
     'Map tracking paused':'Acompanhamento do mapa pausado',
+    'Background task error · retrying':'Erro em tarefa de fundo · tentando novamente',
+    ' · details in diagnostics/runtime.log':' · detalhes em diagnostics/runtime.log',
     'Download the map pack to use party maps and positions.':'Baixe o pacote de mapas para usar mapas e posições do grupo.',
     'Open map setup':'Abrir configuração dos mapas',
     'Waiting for the new shared run…':'Aguardando a nova partida compartilhada…',

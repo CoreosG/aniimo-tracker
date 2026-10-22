@@ -12,6 +12,28 @@ import numpy as np
 from PIL import Image
 
 
+def visible_minimap(frame,box):
+    """Require a current circular HUD rim, including for cached/manual areas.
+
+    Sample radial edges rather than repeating Hough search on every frame.
+    Map texture or menu tiles inside a saved rectangle are not HUD evidence.
+    """
+    left,top,right,bottom=box
+    radius=min(right-left,bottom-top)/2
+    if radius<20:return False
+    center=((left+right)/2,(top+bottom)/2)
+    angles=np.linspace(0,2*np.pi,64,endpoint=False)
+    radii=np.linspace(.90,1.08,19)*radius
+    xs=np.rint(center[0]+radii[:,None]*np.cos(angles)).astype(int)
+    ys=np.rint(center[1]+radii[:,None]*np.sin(angles)).astype(int)
+    if xs.min()<0 or ys.min()<0 or xs.max()>=frame.width or ys.max()>=frame.height:return False
+    x0,y0,x1,y1=int(xs.min()),int(ys.min()),int(xs.max()+1),int(ys.max()+1)
+    pixels=np.asarray(frame.crop((x0,y0,x1,y1)).convert('RGB'))
+    values=pixels[ys-y0,xs-x0].mean(axis=2)
+    edges=np.abs(np.diff(values,axis=0))>=12
+    return any(np.any(edges[i:i+3],axis=0).mean()>=.55 for i in range(len(edges)-2))
+
+
 class MinimapRecognizer:
     """Observe game frames and return missing/outside/searching/match evidence.
 
@@ -65,6 +87,10 @@ class MinimapRecognizer:
         mask=(distance<.84**2)&(distance>.23**2)
         green=(pixels[:,:,1]>pixels[:,:,0]+8)&(pixels[:,:,1]>pixels[:,:,2]+5)&(np.ptp(pixels,axis=2)>20)
         if (green&mask).sum()/max(1,mask.sum())>.10:return True
+        # Party labels and pinned waypoints are not island texture. Keeping
+        # their bright colors in RGB comparison can hide an outdoor match.
+        icons=(np.ptp(pixels,axis=2)>90)&(pixels.max(axis=2)>170)
+        mask &= ~icons
         if self.outdoor is None:return False
         if self.outdoor_pixels is None:
             reference=self._image(self.outdoor).astype(np.float32)
@@ -143,8 +169,8 @@ class MinimapRecognizer:
         if self.frame_size!=frame.size:
             self.frame_size=frame.size;self.streak=0;self.evidence.clear()
         box=self._box(frame,region)
-        if box is None:
-            self.streak=0
+        if box is None or not visible_minimap(frame,box):
+            self.streak=0;self.evidence.clear();self.last_layout=None;self.last_position=None
             return dict(kind='missing',reason='Waiting for minimap')
         patch=frame.crop(box)
         if self._outside(patch):

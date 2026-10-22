@@ -13,6 +13,7 @@ if __name__=='__main__' and sys.argv[1:2]==['--apply-update']:
     sys.exit(run_helper(sys.argv[2:]))
 import threading
 import time
+import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -53,6 +54,8 @@ class App(tk.Tk):
         self.configure(bg=BG)
         self.data_dir = Path(data_dir or Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'AniimoTracker')
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.callback_fault=None
+        self.callback_fault_at=0.
         (self.data_dir / 'screenshots').mkdir(exist_ok=True)
         self.ledger = Ledger(self.data_dir / 'tracker.db')
         capture_settings=self.ledger.settings()
@@ -908,12 +911,21 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
 
     def poll_map_input(self):
         # Keep M/Esc responsive without increasing capture/render frequency.
-        self.sanctum.poll_map_keys()
+        if self.updates.closed:return
+        self.after_cancel(self.map_input_tick_id)
         self.map_input_tick_id = self.after(16, self.poll_map_input)
+        self.sanctum.poll_map_keys()
 
     def tick(self):
+        if self.updates.closed:return
+        # A failed callback must not permanently stop party/capture processing.
+        # Replace the pending timer too when tick is invoked explicitly.
+        self.after_cancel(self.tick_id)
+        self.tick_id = self.after(100, self.tick)
         self.updates.tick()
-        if self.updates.restart_pending:return
+        if self.updates.restart_pending:
+            self.after_cancel(self.tick_id)
+            return
         self.party.tick()
         self.sanctum.tick()
         self.update_run_status()
@@ -1013,7 +1025,25 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
             self.next_locale_refresh=time.monotonic()+.5
         if self.screenshot_cleanup_due and time.monotonic()>=self.next_screenshot_cleanup:
             self.cleanup_screenshots()
-        self.tick_id = self.after(100, self.tick)
+
+    def report_callback_exception(self, kind, value, trace):
+        now=time.monotonic()
+        signature=(kind.__name__,str(value)[:200])
+        if signature==self.callback_fault and now-self.callback_fault_at<10:return
+        self.callback_fault,self.callback_fault_at=signature,now
+        message='Background task error · retrying'
+        try:
+            folder=self.data_dir/'diagnostics';folder.mkdir(exist_ok=True)
+            path=folder/'runtime.log'
+            entry=(datetime.now().astimezone().isoformat()+'\n'+''.join(traceback.format_exception(kind,value,trace)))[-65536:]
+            data=entry.encode('utf-8')[-65536:].decode('utf-8',errors='ignore').encode('utf-8')+b'\n'
+            if path.exists() and path.stat().st_size+len(data)>262144:
+                path.replace(folder/'runtime.previous.log')
+            with path.open('ab') as stream:stream.write(data)
+            message+=' · details in diagnostics/runtime.log'
+        except OSError:pass
+        try:self.status.set(message)
+        except tk.TclError:pass
 
     def view_image(self, kind):
         path = self.draft_images.get(kind)

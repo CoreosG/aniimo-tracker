@@ -9,6 +9,7 @@ import cv2
 from PIL import Image,ImageDraw,ImageOps
 from map_catalog import layouts_for
 from i18n import tr
+from minimap_recognition import visible_minimap
 
 SIMULATOR=ASSETS/'simulator'
 
@@ -187,6 +188,7 @@ class MapEngine:
                 for x,y,r in ranked[:1]:
                     if x-r<0 or y-r<0:continue
                     boxes.append((round(x-r),round(y-r),round(x+r),round(y+r)))
+        boxes=[box for box in boxes if visible_minimap(frame,box)]
         best=None
         for box in boxes:
             crop=frame.crop(box);gray=self._gray(crop)

@@ -104,6 +104,17 @@ class MinimapRecognitionTests(unittest.TestCase):
             result=matcher.observe(hud(reference,(315,335)),now=i*.8)
             self.assertEqual(result['kind'],'outside',result)
 
+    def test_outdoor_stone_paths_remain_outdoor_under_party_and_waypoint_icons(self):
+        reference=floor_plan()
+        matcher=MinimapRecognizer({32:reference,39:floor_plan(True)},outdoor=reference)
+        frame=hud(reference,(315,335))
+        draw=ImageDraw.Draw(frame)
+        draw.ellipse((135,100,155,120),fill=(245,30,220))
+        draw.ellipse((65,125,85,145),fill=(30,130,250))
+        for i in range(4):
+            result=matcher.observe(frame,now=i*.8)
+            self.assertEqual(result['kind'],'outside',result)
+
     def test_unique_corridors_confirm_after_three_observations_without_portals(self):
         reference=floor_plan()
         matcher=MinimapRecognizer({32:reference,39:floor_plan(True)})

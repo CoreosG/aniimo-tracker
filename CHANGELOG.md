@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-10-22
+
+### Fixed
+
+- Keep background refresh and map-key polling scheduled after callback errors,
+  so a transient map failure cannot permanently freeze later party joins.
+- Reject minimap positions from cached/manual rectangles when the circular HUD
+  rim is absent, including menus that contain map-like pixels.
+- Ignore bright party/waypoint icons when comparing the outdoor island reference.
+
+### Added
+
+- Rate-limited local callback diagnostics with two bounded log files.
+- Portuguese manual-balance start/join regressions in both operation orders.
+
 ## [0.3.7] - 2026-10-21
 
 ### Added
@@ -152,7 +167,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.7...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.8...HEAD
+[0.3.8]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.4...v0.3.5

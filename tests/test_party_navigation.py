@@ -73,6 +73,55 @@ class PartyNavigationTests(unittest.TestCase):
         self.assertEqual(self.host_state['confidence'],.8)
         self.assertIsNone(self.app.ledger.active_start())
 
+    def test_portuguese_join_applies_welcome_roster_and_shared_layout(self):
+        self.app.set_language('pt-BR')
+        self.app.fields['balance'].set('8217300')
+        self.app.manual_start_button.invoke()
+        self.assertEqual(self.app.ledger.active_start()['balance'],8217300)
+        self.host.publish(dict(type='update',epoch=1,evidence=dict(layout=34,confidence=.8)))
+        self.until(lambda:self.host_state['layout']==34)
+        party=self.app.party
+        party.mode.set('custom');party.address.set(self.url);party.code.set(self.host_state['code'])
+        party.connect(join=True)
+        self.until(lambda:len(self.host_state['members'])==2)
+        self.until(lambda:party.connected and len(party.members.get_children())==2)
+        self.until(lambda:self.app.sanctum.session.map_confirmed)
+        self.assertEqual(self.app.sanctum.engine.layout,34)
+        self.assertNotIn('Conectando',party.status.get())
+        self.app.set_language('en')
+
+    def test_portuguese_manual_balance_start_after_join_uses_shared_map(self):
+        self.app.set_language('pt-BR')
+        self.host.publish(dict(type='update',epoch=1,evidence=dict(layout=34,confidence=.8)))
+        self.until(lambda:self.host_state['layout']==34)
+        party=self.app.party
+        party.mode.set('custom');party.address.set(self.url);party.code.set(self.host_state['code']);party.connect(join=True)
+        self.until(lambda:party.connected)
+        self.app.fields['balance'].set('8217300');self.app.manual_start_button.invoke()
+        self.until(lambda:self.app.sanctum.session.map_confirmed)
+        self.assertEqual(self.app.ledger.active_start()['balance'],8217300)
+        self.assertEqual(self.app.sanctum.engine.layout,34)
+        self.app.set_language('en')
+
+    def test_join_recovers_after_a_transient_map_refresh_error(self):
+        self.app.set_language('pt-BR')
+        self.app.begin_run(without_balance=True)
+        self.app.busy_capture=True
+        attempts=[]
+        def bounds(*args):
+            attempts.append(True)
+            if len(attempts)==1:raise OSError('Temporary window geometry failure')
+            return (0,0,1280,720)
+        with patch('sanctum_panel.game_is_foreground',return_value=True),patch('sanctum_panel.capture_bounds',side_effect=bounds):
+            self.until(lambda:bool(attempts))
+            party=self.app.party
+            party.mode.set('custom');party.address.set(self.url);party.code.set(self.host_state['code']);party.connect(join=True)
+            self.until(lambda:len(self.host_state['members'])==2)
+            self.until(lambda:party.connected and len(party.members.get_children())==2)
+        log=Path(self.directory.name)/'diagnostics/runtime.log'
+        self.assertIn('Temporary window geometry failure',log.read_text(encoding='utf-8'))
+        self.app.set_language('en')
+
     def test_party_explains_inactive_tracking_and_resumes_map_and_positions(self):
         baseline=self.app.ledger.summary()
         self.host.publish(dict(type='update',epoch=1,evidence=dict(layout=34,confidence=.8)))
