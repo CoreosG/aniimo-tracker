@@ -42,6 +42,7 @@ class MapEngine:
         self.layout=int(layout)
         self.data=json.loads((SIMULATOR/f'layout-{layout}.json').read_text(encoding='utf-8'))
         self.routes=json.loads((SIMULATOR/f'route-{layout}.json').read_text(encoding='utf-8'))
+        self.treasure_rooms=[self.data['rooms'][p['i']] for p in self.routes['pts'] if p['k']=='room']
         self.image=Image.open(SIMULATOR/f'assets/lost-sanctum/maps/200{layout}-full.webp').convert('RGB')
         self.sift=cv2.SIFT_create(nfeatures=1800,contrastThreshold=.015)
         # The game floor texture is used for recognition; the annotated render is
@@ -283,20 +284,38 @@ class MapEngine:
         self.geometry_scale=scale
         return dict(player=position,confidence=float(score),method='corridors',region=list(box),inliers=0)
 
-    def render(self,size=(700,700),keys=2,entrance=None,player=None,zoom=1.,follow=True,live=False,goal='keys',eggs=1,icons=None,unconfirmed_trials=False,teammates=None,player_name=None,player_color='#3df5ff',rooms=1,exit='nearest',legend=False):
+    def render(self,size=(700,700),keys=2,entrance=None,player=None,zoom=1.,follow=True,live=False,goal='keys',eggs=1,icons=None,unconfirmed_trials=False,teammates=None,player_name=None,player_color='#3df5ff',rooms=1,exit='nearest',legend=False,trails=None):
         # All marker/route coordinates refer to the original render percentages.
         im=self.image.copy();draw=ImageDraw.Draw(im)
         def xy(p):return (p[0]*im.width/100,p[1]*im.height/100)
+        scale=min(size[0]/im.width,size[1]/im.height)*zoom
+        scaled=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
+        canvas=Image.new('RGB',size,(0,0,1))
+        center=xy(player) if player and follow and zoom>1 else (im.width/2,im.height/2)
+        offset=(round(size[0]/2-center[0]*scale),round(size[1]/2-center[1]*scale))
+        canvas.paste(scaled,offset)
+        def screen_xy(p):
+            x,y=xy(p);return (round(x*scale+offset[0]),round(y*scale+offset[1]))
+        draw=ImageDraw.Draw(canvas)
+        for trail in trails or []:
+            for segment in trail['segments']:
+                points=[screen_xy(p) for p in segment]
+                if len(points)<2:continue
+                draw.line(points,fill='#14232f',width=4,joint='curve')
+                draw.line(points,fill=trail['color'],width=2,joint='curve')
         icons={**dict(keys=True,eggs=True,trials=True,chests=True,monsters=False),**(icons or {})}
         # Independent alternatives, each satisfying the full requested goal.
-        # Blue dashes leave the orange path visible wherever the routes overlap.
+        # Fixed-width amber and indigo stand apart from cyan/pink/green trails.
+        # The second route is dashed so both remain visible where they overlap.
         for start in ((0,1) if entrance is None else (entrance,)):
-            color=('#ff9b43','#65b5ff')[start]
-            width=max(5,im.width//180)
+            color=('#ffb12f','#726bff')[start]
+            width=6
             for segment in self.route(start,keys,goal,eggs,rooms,exit)['segments']:
-                points=[xy(p) for p in segment]
+                points=[screen_xy(p) for p in segment]
                 if len(points)<2:continue
-                if start==0:draw.line(points,fill=color,width=width,joint='curve')
+                if start==0:
+                    draw.line(points,fill='#101522',width=width+4,joint='curve')
+                    draw.line(points,fill=color,width=width,joint='curve')
                 else:
                     phase=0.;dash=width*2.5;period=dash*1.7
                     for a,b in zip(points,points[1:]):
@@ -305,22 +324,16 @@ class MapEngine:
                         while cursor<length:
                             step=min(length-cursor,(dash if phase<dash else period)-phase)
                             if phase<dash:
-                                draw.line([(a[0]+(b[0]-a[0])*t/length,a[1]+(b[1]-a[1])*t/length) for t in (cursor,cursor+step)],fill=color,width=width)
+                                dash_points=[(a[0]+(b[0]-a[0])*t/length,a[1]+(b[1]-a[1])*t/length) for t in (cursor,cursor+step)]
+                                draw.line(dash_points,fill='#101522',width=width+4)
+                                draw.line(dash_points,fill=color,width=width)
                             cursor+=step;phase=(phase+step)%period
-        for name,color in [('main','#ff9b43'),('side','#65b5ff')]:
-            p=self.data['doors'][name];x,y=xy([p['x'],p['y']]);draw.rectangle((x-10,y-10,x+10,y+10),fill=color,outline='white',width=2)
-        scale=min(size[0]/im.width,size[1]/im.height)*zoom
-        scaled=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
-        canvas=Image.new('RGB',size,(0,0,1))
-        center=xy(player) if player and follow and zoom>1 else (im.width/2,im.height/2)
-        offset=(round(size[0]/2-center[0]*scale),round(size[1]/2-center[1]*scale))
-        canvas.paste(scaled,offset)
         # Draw room symbols after scaling so they remain readable on the overlay.
         groups=[('nests','egg','eggs'),('keyrooms','key','keys'),('challenges','trial','trials'),('rooms','chest','chests'),('mobs','monster','monsters')]
         for name,kind,category in groups:
             if not icons[category]:continue
             icon=room_icon(kind)
-            for p in self.data[name]:
+            for p in (self.treasure_rooms if kind=='chest' else self.data[name]):
                 if kind=='trial' and p.get('maybe') and not unconfirmed_trials:continue
                 if kind=='chest' and not any(p.get(c,0)>0 for c in ('gold','purple','blue')):continue
                 x,y=xy([p['x'],p['y']])
@@ -328,6 +341,16 @@ class MapEngine:
                 canvas.paste(icon,(x-icon.width//2,y-icon.height//2),icon)
                 if kind=='trial' and p.get('maybe'):
                     ImageDraw.Draw(canvas).text((x+8,y-19),'?',fill='#ffc65c',stroke_width=1,stroke_fill='#15232f')
+        draw=ImageDraw.Draw(canvas)
+        for name,color,label in [('main','#ff9b43','Orange portal'),('side','#65b5ff','Blue portal')]:
+            p=self.data['doors'][name];x,y=screen_xy([p['x'],p['y']])
+            draw.ellipse((x-20,y-20,x+20,y+20),fill='#14232f',outline='white',width=2)
+            draw.ellipse((x-17,y-17,x+17,y+17),fill=color)
+            draw.rounded_rectangle((x-7,y-12,x+7,y+12),radius=6,outline='white',width=3)
+            draw.line((x-11,y+12,x+11,y+12),fill='white',width=3)
+            text=tr(label);bounds=draw.textbbox((0,0),text);width=bounds[2]-bounds[0]
+            draw.rounded_rectangle((x-width//2-5,y-39,x+width//2+5,y-23),radius=4,fill='#14232f',outline=color)
+            draw.text((x-width//2,y-38),text,fill='white')
         markers=list(teammates or [])
         if player:markers.append(dict(position=player,name=player_name or tr('YOU'),color=player_color,live=live))
         for marker in markers:

@@ -27,6 +27,7 @@ class WatchSession:
         self.enabled, self.run_id, self.paused = enabled, None, False
         self.map_open=False
         self.map_confirmed=False
+        self.inside_dungeon=False
         self.standalone=False
 
     @property
@@ -44,10 +45,15 @@ class WatchSession:
             self.standalone=standalone
             self.map_open=False
             self.map_confirmed=False
+            self.inside_dungeon=False
 
     @property
     def can_track_minimap(self):
         return self.watching and self.map_confirmed
+
+    @property
+    def can_navigate(self):
+        return self.can_track_minimap and self.inside_dungeon
 
     def confirm_map(self):
         if self.context_id is not None:self.map_confirmed=True

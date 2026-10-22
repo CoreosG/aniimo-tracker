@@ -10,6 +10,8 @@ def screen_kind(text):
     matches=[]
     if re.search(r'invent[a-z]*rio|\binventory\b',clean) and re.search(r'cofre|mochila|equipment|equipamento|backpack',clean):
         matches.append('balance')
+    elif re.search(r'\b(?:loja|shop|store)\b',clean) and re.search(r'\b(?:comprar|buy|purchase)\b',clean) and re.search(r'equipamento|equipment|bilhete|ticket|ovos|eggs',clean):
+        matches.append('balance')
     if re.search(r'saque da partida|match loot|run loot|loot value',clean):
         matches.append('money')
     if rank_points_reading(text) is not None:

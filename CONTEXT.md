@@ -32,6 +32,10 @@
 
 **Outdoor observation**: Local evidence that the player is outside a dungeon. It suppresses dungeon navigation without ending, saving or starting a ledger run. Returning to a dungeon requires fresh layout evidence.
 
+**Local dungeon presence**: A fresh local dungeon-map or confirmed minimap observation showing that this player is inside. A shared layout identifies the party's dungeon but does not establish local presence. Until local presence is known, only the shared-layout status is shown. An outdoor observation withdraws the player's shared location.
+
+**Player trail**: A bounded, optional history of observed locations within one navigation session and layout revision. It uses that player's marker color, breaks at missing locations or implausible jumps, and is separate from planned routes. Trails are reconstructed locally from position messages; they are not uploaded as history.
+
 **Party location**: A player's last observed coordinates on the shared layout. A location belongs to one shared run and layout revision; old or incompatible locations cannot move a marker on a new layout.
 
 **Modeled margin**: Known extracted item value minus the current planned per-run cost. It is a comparison against today's budget settings, not realized cash profit or historical spending.

@@ -159,7 +159,7 @@ class MinimapRecognizer:
         if f.sum()+w.sum()<.35*cv2.resize(mask.astype(np.float32),(37,37)).sum():return None
         return f,w
 
-    def observe(self,frame,region=None,now=None):
+    def observe(self,frame,region=None,now=None,identify=True):
         now=time.monotonic() if now is None else now
         if self.last_time is not None and now-self.last_time<.35:
             return dict(kind='searching',reason='Waiting for fresh minimap evidence')
@@ -176,6 +176,8 @@ class MinimapRecognizer:
         if self._outside(patch):
             self.streak=0;self.evidence.clear();self.last_layout=None;self.last_position=None
             return dict(kind='outside',reason='Outdoor minimap detected')
+        if not identify:
+            return dict(kind='searching',reason='Automatic minimap recognition off')
         template=self._template(patch)
         if template is None:
             self.streak=0;self.evidence.clear();self.last_layout=None;self.last_position=None

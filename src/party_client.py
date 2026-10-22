@@ -157,15 +157,21 @@ class PartyClient:
         self.lock = threading.Lock()
         self.latest = None
         self.thread = None
+        self.resume_session=None;self.preserve_on_close=False
 
-    def start(self, address, name, difficulty='Chaos', code=''):
+    def start(self, address, name, difficulty='Chaos', code='',resume=None):
         address, name = server_url(address), username(name)
         if self.thread and self.thread.is_alive(): raise ValueError('Leave the current party first.')
         self.stop.clear()
         while not self.events.empty(): self.events.get_nowait()
         while not self.commands.empty(): self.commands.get_nowait()
         self.latest = None
+        self.resume_session=None;self.preserve_on_close=False
         hello = dict(type='join', code=code.strip().upper(), username=name) if code.strip() else dict(type='create', username=name, difficulty=difficulty)
+        if resume:
+            identity=_identity(resume['id']);token=resume['token'];room=resume['code']
+            if not isinstance(token,str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,128}',token) or not isinstance(room,str) or not re.fullmatch(r'[A-Z2-9]{8}',room):raise ValueError('Invalid party handoff')
+            hello=dict(type='resume',id=identity,token=token,code=room)
         self.thread = threading.Thread(target=self.worker, args=(address, hello), daemon=True)
         self.thread.start()
 
@@ -187,6 +193,14 @@ class PartyClient:
     def close(self):
         self.stop.set()
 
+    def prepare_update(self,path):
+        from party_handoff import save
+        with self.lock:
+            if not self.resume_session:return False
+            save(path,self.resume_session)
+            self.preserve_on_close=True
+        return True
+
     def worker(self, address, hello):
         delay = 1
         while not self.stop.is_set():
@@ -200,7 +214,9 @@ class PartyClient:
                         self.event(dict(type='error', code=_error_code(reply))); return
                     identity, token, current_state = _welcome(reply)
                     hello = dict(type='resume', id=identity, token=token, code=current_state['code'])
-                    # Do not surface the resume secret to widgets or persistence.
+                    # Never put the secret in UI events. Only an explicit update
+                    # may persist a single-use, DPAPI-encrypted handoff.
+                    with self.lock:self.resume_session=dict(address=address,**hello)
                     self.event(dict(type='welcome', id=identity, state=current_state))
                     delay = 1
                     sent_at = 0.
@@ -228,7 +244,7 @@ class PartyClient:
                             self.event(dict(type='state', state=current_state))
                         elif reply.get('type') == 'error':
                             self.event(dict(type='error', code=_error_code(reply))); return
-                    socket.send('{"type":"leave"}')
+                    if not self.preserve_on_close:socket.send('{"type":"leave"}')
             except Exception:
                 if not self.stop.is_set(): self.event(dict(type='reconnecting'))
             if self.stop.wait(delay*random.uniform(.7,1.3)): return

@@ -269,6 +269,31 @@ Saving edits the original checkpoint and refreshes the graph. Older checkpoint e
 
 ## Local data and privacy
 
+Inventory and Shop captures read the top-right coin wallet. During an active
+run, a new reading updates the wallet checkpoint without replacing the starting
+balance or clearing captured loot/points. Shop item prices and other currencies
+are outside the suggested wallet crop.
+
+Party layout confirmation alone does not mean you are inside that dungeon. The
+overlay keeps only its compact layout/status bar until a local dungeon map or
+confirmed minimap reading establishes your presence. Going outdoors withdraws
+your shared marker instead of matching the island onto a dungeon floor.
+
+**Map & routes → Icons → Player trails** toggles thin paths in each player's
+marker color. Planned routes are thicker, outlined amber/indigo alternatives.
+Trails are reconstructed locally from fresh position messages, capped at 600
+samples per player, and start when your tracker observes them. Exits, missing
+locations and large jumps break a trail; new runs/layout revisions clear it.
+Restarting the app starts fresh trail history. Treasure-room icons identify
+rooms with gold rather than individual corridor chests.
+
+Updates initiated from 0.4.0 onward reconnect to the same party identity and host
+role. The single-use reconnect handoff is encrypted with Windows DPAPI, expires
+after 60 seconds and is consumed on restart. The relay's reconnect grace is also
+60 seconds; an unusually slow restart may require joining again. The initial
+upgrade from an older version still requires rejoining once. Normal Leave party
+and closing the app continue to leave the party.
+
 Callback failures are retried and recorded locally in
 `%LOCALAPPDATA%\AniimoTracker\diagnostics\runtime.log`. Repeated identical errors
 are throttled; the current log and one rotated backup are each limited to

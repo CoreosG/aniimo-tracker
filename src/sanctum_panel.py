@@ -65,6 +65,7 @@ class SanctumPanel:
         self.route_rooms=tk.StringVar(value=str(self.config.get('route_rooms',1)))
         self.route_exit=tk.StringVar(value=self.config.get('route_exit','nearest'))
         self.legend=tk.BooleanVar(value=self.config.get('legend',False))
+        self.player_trails=tk.BooleanVar(value=self.config.get('player_trails',True))
         self.egg_count=tk.StringVar(value=str(self.config.get('route_eggs',1)))
         self.icon_vars={name:tk.BooleanVar(value=self.config.get('icons',{}).get(name,name not in ('chests','monsters'))) for name in ('keys','eggs','trials','chests','monsters')}
         self.detector = Detector(self.folder / 'calibration',self.difficulty.get())
@@ -189,6 +190,7 @@ class SanctumPanel:
             ttk.Checkbutton(layers,text=title,variable=self.icon_vars[name],command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         ttk.Checkbutton(layers,text='Include unconfirmed trials (?)',variable=self.unconfirmed_trials,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         ttk.Checkbutton(layers,text='Map legend',variable=self.legend,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
+        ttk.Checkbutton(layers,text='Player trails',variable=self.player_trails,command=self.save_preferences,style='Panel.TCheckbutton').pack(anchor='w',pady=3)
         section=self.map_sections['Overlay']
         options=card('OVERLAY DISPLAY')
         self.advanced=options
@@ -248,7 +250,7 @@ class SanctumPanel:
         self.write_config();self.tick()
 
     def change_difficulty(self):
-        self.outdoors=False;self.outdoor_votes=0
+        self.session.inside_dungeon=False
         difficulty=self.difficulty.get()
         self.detector.difficulty=self.maps.difficulty=self.app.auto_maps.difficulty=difficulty
         self.context_serial+=1;self.generation+=1
@@ -317,7 +319,7 @@ class SanctumPanel:
         self.config.update(enabled=self.enabled.get(),party=self.party.get(),route_keys=int(self.keys.get()),
             standalone_watch=self.standalone,difficulty=self.difficulty.get(),route_goal=self.route_goal.get(),route_eggs=int(self.egg_count.get()),route_rooms=int(self.route_rooms.get()),route_exit=self.route_exit.get(),legend=self.legend.get(),icons={k:v.get() for k,v in self.icon_vars.items()},
             overlay_enabled=self.overlay_enabled.get(),opacity=round(self.opacity.get()),overlay_size=round(self.overlay_size.get()),
-            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),always_status=self.always_status.get(),unconfirmed_trials=self.unconfirmed_trials.get(),automatic_minimap=self.automatic_minimap.get())
+            zoom=self.zoom.get(),follow=self.follow.get(),capture_status=self.capture_status.get(),always_status=self.always_status.get(),unconfirmed_trials=self.unconfirmed_trials.get(),automatic_minimap=self.automatic_minimap.get(),player_trails=self.player_trails.get())
         self.config['position_interval']=1.5 if self.refresh_mode.get()=='Low CPU (1.5s)' else .7
         self.overlay_dirty=True
         if hasattr(self,'count_spins'):
@@ -393,6 +395,7 @@ class SanctumPanel:
             if saved_layout in layouts_for(self.difficulty.get()):
                 self.session.confirm_map()
                 self.accept_layout(saved_layout,saved_reading)
+                self.session.inside_dungeon=False
                 if saved_player:self.player=saved_player
                 self.config.update(reading=saved_reading,player=self.player)
                 self.overlay_dirty=True
@@ -423,6 +426,7 @@ class SanctumPanel:
             self.status.set('No tracked run is active. Start a run from the dashboard before resuming map tracking.')
             return
         self.session.resume()
+        self.session.inside_dungeon=False
         self.enabled.set(True)
         self.generation+=1
         self.scan_until,self.next_scan,self.next_minimap,self.next_screen_probe=0,0,0,0
@@ -536,6 +540,8 @@ class SanctumPanel:
                 self.map_open=False
                 self.scan_until=0
             if reading.get('outside'):
+                self.session.inside_dungeon=False
+                self.last_reading={}
                 self.outdoors=True;self.outdoor_votes=2
                 self.player=None;self.position_time=0
                 self.map_feedback='Outside dungeon';self.status.set(self.map_feedback)
@@ -543,6 +549,8 @@ class SanctumPanel:
             if reading.get('minimap'):
                 automatic=reading.get('automatic') or {}
                 if automatic.get('kind')=='outside':
+                    self.session.inside_dungeon=False
+                    self.last_reading={}
                     self.outdoor_votes=min(2,self.outdoor_votes+1)
                     self.player=None;self.position_time=0
                     if self.outdoor_votes>=2:self.outdoors=True
@@ -551,7 +559,7 @@ class SanctumPanel:
                     continue
                 if automatic:
                     self.outdoor_votes=0
-                    if automatic.get('kind')=='match' and (not self.session.map_confirmed or self.outdoors):
+                    if automatic.get('kind')=='match' and (not self.session.map_confirmed or not self.session.inside_dungeon or self.outdoors):
                         self.outdoors=False
                         self.accept_layout(automatic['layout'],automatic)
                         self.player=self.engine.position_from_reference(automatic['reference_position'])
@@ -564,7 +572,7 @@ class SanctumPanel:
                         self.status.set(automatic.get('reason','Comparing corridors'))
                 if not self.session.can_track_minimap:
                     continue
-                if reading.get('match'):
+                if reading.get('match') and self.session.can_navigate and not self.outdoors:
                     self.session.observe_screen('minimap')
                     self.scan_until=0
                     if not self.engine:
@@ -656,13 +664,17 @@ class SanctumPanel:
         position=[max(screen[0]+12,min(position[0],screen[2]-size-12)),max(screen[1]+12,min(position[1],screen[3]-size-88))]
         if self.overlay.movable:self.overlay.position=tuple(position)
         engine=(self.engine or (self.maps.model(layouts_for(self.difficulty.get())[0]) if preview else None)) if self.assets_ready else None
-        draw_map=not header_only and engine is not None and (preview or not self.outdoors and self.session.map_confirmed or self.overlay.movable)
+        draw_map=not header_only and engine is not None and (preview or not self.outdoors and self.session.can_navigate)
         live=time.monotonic()-self.position_time<2
         player=(self.player or [50,50]) if preview else self.player
         image=engine.render((size,size),int(self.keys.get()),None,player,self.zoom.get(),self.follow.get(),live or preview,**self.render_options()) if draw_map else Image.new('RGB',(size,1),'#000001')
         label='Overlay preview' if preview else self.map_feedback if header_only else f'{self.difficulty.get()} {engine.layout}' if draw_map else ''
         if (not self.capture_status.get() or self.session.standalone) and not draw_map and not header_only:label=f'Waiting for map · {self.app.shortcut_hint("map")} to confirm'
-        if self.outdoors and not preview:label='Outside dungeon'
+        if not preview and self.session.watching and not self.session.inside_dungeon:
+            shared=self.app.party.state if hasattr(self.app,'party') else None
+            if self.outdoors:label='Outside dungeon'
+            elif shared and shared.get('layout') is not None:label='Waiting for dungeon'
+            if shared and shared.get('layout') is not None:label+=f' · {shared["difficulty"]} {shared["layout"]}'
         if not self.assets_ready:label='Map pack required · download in the Map tab'
         details=self.app.overlay_run_status() if self.capture_status.get() and not preview else ''
         if self.always_status.get() and not self.app.ledger.active_start() and not preview:
@@ -727,10 +739,11 @@ class SanctumPanel:
         detector=self.detector
         maps=self.maps
         confirmed=self.session.map_confirmed
+        local_inside=self.session.inside_dungeon
         recognition_key=(self.context_serial,self.generation,self.difficulty.get(),self.automatic_minimap.get())
         if self.recognition_key!=recognition_key:
             self.recognition_key=recognition_key
-            self.recognizer=MinimapRecognizer.from_assets(ASSETS,layouts_for(self.difficulty.get())) if self.automatic_minimap.get() else None
+            self.recognizer=MinimapRecognizer.from_assets(ASSETS,layouts_for(self.difficulty.get())) or MinimapRecognizer({})
         recognizer=self.recognizer
         outdoors=self.outdoors
         automatic_enabled=self.automatic_minimap.get()
@@ -746,9 +759,11 @@ class SanctumPanel:
                 if map_screen or explicit:
                     reading=detector.detect(image)
                 else:
-                    automatic=recognizer.observe(image,region) if recognizer else dict(kind='searching',reason=f'Update map pack for automatic minimap recognition · {map_key} still works' if automatic_enabled else f'Automatic minimap recognition off · press {map_key} to confirm')
+                    automatic=recognizer.observe(image,region,identify=automatic_enabled and bool(recognizer.references))
+                    if automatic.get('kind')=='searching' and (not automatic_enabled or not recognizer.references):
+                        automatic['reason']=f'Update map pack for automatic minimap recognition · {map_key} still works' if automatic_enabled else f'Automatic minimap recognition off · press {map_key} to confirm'
                     outside=automatic.get('kind')=='outside'
-                    match=engine.match_minimap(image,region,previous=previous) if confirmed and engine and not outside and not outdoors else None
+                    match=engine.match_minimap(image,region,previous=previous) if confirmed and local_inside and engine and not outside and not outdoors else None
                     if not match and confirmed and engine and not outdoors and automatic.get('kind')=='match' and automatic['layout']==engine.layout:
                         match=dict(player=engine.position_from_reference(automatic['reference_position']),confidence=automatic['confidence'],method='corridors',inliers=0)
                     reading=dict(minimap=True,match=match,automatic=automatic)
@@ -810,7 +825,7 @@ class SanctumPanel:
         ox,oy=(w-engine.image.width*scale)/2,(h-engine.image.height*scale)/2
         closest=None
         for group,label in [('keyrooms','Key doors'),('nests','Egg nests'),('challenges','Sanctums / trials'),('rooms','Chest rooms'),('mobs','Monsters')]:
-            for room in engine.data.get(group,[]):
+            for room in (engine.treasure_rooms if group=='rooms' else engine.data.get(group,[])):
                 x=ox+room['x']/100*engine.image.width*scale;y=oy+room['y']/100*engine.image.height*scale
                 distance=((event.x-x)**2+(event.y-y)**2)**.5
                 if distance<=24 and (closest is None or distance<closest[0]):closest=(distance,group,label,room)
@@ -932,10 +947,12 @@ class SanctumPanel:
             self.status.set('Download the map pack in Map & routes first.');return
         if layout in reading.get('candidates',[]) and 'orange' in reading and 'blue' in reading:
             self.session.confirm_map()
+            self.session.inside_dungeon=True
             self.outdoors=False;self.outdoor_votes=0
             self.map_feedback=f'{self.difficulty.get()} {layout} · Map confirmed'
         elif reading.get('kind')=='match' and reading.get('method')=='temporal-corridors' and reading.get('layout')==layout:
             self.session.confirm_map()
+            self.session.inside_dungeon=True
             self.outdoors=False;self.outdoor_votes=0
         changed=not self.engine or self.engine.layout!=layout
         if changed:self.engine=self.maps.model(layout)

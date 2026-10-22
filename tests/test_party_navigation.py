@@ -10,6 +10,7 @@ from app import App
 from party_client import PartyClient
 from map_engine import MapEngine
 from tests.test_minimap_recognition import hud
+from tests.test_portal_occlusion import entry_map
 
 
 class PartyNavigationTests(unittest.TestCase):
@@ -58,6 +59,107 @@ class PartyNavigationTests(unittest.TestCase):
     def confirm(self,epoch,layout,score):
         self.host.publish(dict(type='update',epoch=epoch,evidence=dict(layout=layout,confidence=score)))
         self.until(lambda:self.app.sanctum.engine is not None and self.app.sanctum.engine.layout==layout and self.app.party.state['epoch']==epoch)
+
+    def observe(self,frame,count=1):
+        with patch('sanctum_panel.capture_image',return_value=frame),patch('sanctum_panel.capture_bounds',return_value=(0,0,1280,720)):
+            for _ in range(count):
+                self.app.sanctum.scan();self.until(lambda:not self.app.sanctum.busy);time.sleep(.4)
+
+    def test_outdoor_guest_keeps_only_shared_layout_header_across_party_difficulty_change(self):
+        from PIL import Image
+        panel=self.app.sanctum
+        self.app.ledger.configure(capture_target='monitor')
+        panel.difficulty.set('Beginner');panel.change_difficulty();panel.watch_action()
+        self.observe(hud(Image.new('RGB',(1024,1024),(65,125,70))),count=2)
+        self.assertTrue(panel.outdoors)
+        party=self.app.party
+        party.mode.set('custom');party.address.set(self.url);party.code.set(self.host_state['code']);party.connect(join=True)
+        self.until(lambda:party.connected)
+        self.confirm(1,32,.85)
+        panel.show_overlay()
+        self.assertEqual(panel.overlay.photo.height(),1,'A shared layout must not open dungeon navigation outdoors')
+        shown=' '.join(panel.overlay.canvas.itemcget(i,'text') for i in panel.overlay.canvas.find_all() if panel.overlay.canvas.type(i)=='text')
+        self.assertIn('32',shown)
+        self.assertIn('Outside dungeon',shown)
+
+    def test_shared_map_waits_for_local_dungeon_evidence_before_drawing_navigation(self):
+        self.app.ledger.configure(capture_target='monitor')
+        self.join(map_only=True);self.confirm(1,37,.95)
+        panel=self.app.sanctum
+        panel.show_overlay()
+        self.assertEqual(panel.overlay.photo.height(),1)
+        self.observe(hud(MapEngine(37).reference,(350,600)),count=3)
+        panel.show_overlay()
+        self.assertGreater(panel.overlay.photo.height(),1)
+        self.assertIsNotNone(panel.player)
+
+    def test_leaving_dungeon_removes_own_position_from_the_relay_without_moving_it_outdoors(self):
+        from PIL import Image
+        self.app.ledger.configure(capture_target='monitor')
+        self.join(map_only=True);self.confirm(1,37,.95)
+        party=self.app.party;panel=self.app.sanctum
+        own=lambda:next(member for member in self.host_state['members'] if member['id']==party.identity)
+        self.observe(hud(MapEngine(37).reference,(350,600)),count=3)
+        self.until(lambda:own()['position'] is not None)
+        self.observe(hud(Image.new('RGB',(1024,1024),(65,125,70))))
+        self.until(lambda:own()['position'] is None)
+        self.assertIsNone(panel.player)
+        panel.show_overlay()
+        self.assertEqual(panel.overlay.photo.height(),1)
+
+    def test_outdoor_withdrawal_still_works_with_automatic_layout_identification_disabled(self):
+        from PIL import Image
+        self.app.ledger.configure(capture_target='monitor')
+        self.join(map_only=True);self.confirm(1,37,.95)
+        panel=self.app.sanctum;party=self.app.party
+        self.observe(hud(MapEngine(37).reference,(350,600)),count=3)
+        own=lambda:next(m for m in self.host_state['members'] if m['id']==party.identity)
+        self.until(lambda:own()['position'] is not None)
+        panel.automatic_minimap.set(False);panel.save_preferences()
+        self.observe(hud(Image.new('RGB',(1024,1024),(65,125,70))))
+        self.until(lambda:own()['position'] is None)
+        self.assertFalse(panel.session.inside_dungeon)
+
+    def test_party_trails_follow_member_colors_can_be_disabled_and_clear_on_new_run(self):
+        self.join(map_only=True)
+        party=self.app.party;panel=self.app.sanctum
+        for point in ([20,30],[21,30]):
+            self.host.publish(dict(type='update',epoch=1,layout=32,revision=party.state['revision'],position=point))
+            self.until(lambda:bool(party.markers()) and party.markers()[0]['position']==point)
+        self.assertEqual(party.own_marker()['trails'][0]['segments'],[[(20,30),(21,30)]])
+        self.assertEqual(party.own_marker()['trails'][0]['color'],party.markers()[0]['color'])
+        panel.player_trails.set(False);panel.save_preferences();self.app.update()
+        self.assertEqual(party.own_marker()['trails'],[])
+        panel.player_trails.set(True);panel.save_preferences()
+        self.host.new_run(1,'Chaos');self.until(lambda:party.state['epoch']==2)
+        self.assertEqual(party.own_marker()['trails'],[])
+
+    def test_update_restart_resumes_the_same_party_identity_and_slot(self):
+        self.join()
+        identity=self.app.party.identity;code=self.app.party.state['code']
+        self.app.party.prepare_update()
+        self.app.close()
+        self.app=App(self.directory.name,hotkeys=False)
+        self.until(lambda:self.app.party.connected)
+        self.assertEqual(self.app.party.identity,identity)
+        self.assertEqual(self.app.party.state['code'],code)
+        self.assertEqual(len(self.app.party.state['members']),2)
+        self.assertFalse((Path(self.directory.name)/'party-update.bin').exists())
+
+    def test_host_update_restart_keeps_the_room_and_host_role(self):
+        self.app.begin_run(without_balance=True)
+        party=self.app.party;party.mode.set('custom');party.address.set(self.url);party.connect()
+        self.until(lambda:party.connected)
+        identity=party.identity;code=party.state['code']
+        self.host.close();self.host=PartyClient();self.host_state=None
+        self.host.start(self.url,'Teammate',code=code)
+        self.until(lambda:self.host_state is not None and len(party.state['members'])==2)
+        party.prepare_update();self.app.close();self.app=App(self.directory.name,hotkeys=False)
+        self.until(lambda:self.app.party.connected)
+        self.assertEqual(self.app.party.state['host'],identity)
+        self.assertEqual(self.app.party.identity,identity)
+        self.assertEqual(self.app.party.state['code'],code)
+        self.assertEqual(len(self.app.party.state['members']),2)
 
     def test_minimap_identified_before_join_is_shared_without_opening_M(self):
         panel=self.app.sanctum
@@ -150,6 +252,8 @@ class PartyNavigationTests(unittest.TestCase):
         self.host.publish(dict(type='update',epoch=2,layout=34,revision=party.state['revision'],position=[12,34]))
         self.until(lambda:bool(party.markers()))
         self.assertEqual(party.markers()[0]['position'],[12,34])
+        self.app.ledger.configure(capture_target='monitor')
+        self.observe(entry_map(covered=False,blue_point=(706,950)))
         panel.player=[56,78];panel.position_time=time.monotonic()
         self.until(lambda:next(m for m in self.host_state['members'] if m['id']==party.identity)['position']==[56,78])
         self.assertEqual(self.app.ledger.summary(),baseline)

@@ -7,12 +7,13 @@ from sanctum import Detector
 
 
 def entry_map(covered=True, controls=True, fully_covered=False, scale=1., reverse=False,
-              portal_visible=True):
+              portal_visible=True,blue_point=None):
     image = Image.new('RGB', (1920, 1080), (62, 72, 91))
     if controls:
         image.paste(Image.open(ASSETS / 'map-zoom-plus.png'), (70, 335))
         image.paste(Image.open(ASSETS / 'map-zoom-minus.png'), (70, 660))
     markers = [('orange-full', (1200 if reverse else 600, 650)), ('blue', (600 if reverse else 1200, 650))]
+    if blue_point is not None:markers[1]=('blue',blue_point)
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype('C:/Windows/Fonts/seguisb.ttf', round(16*scale))
     for kind, (cx, cy) in markers:

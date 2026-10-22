@@ -3,6 +3,27 @@ from map_engine import MapEngine
 
 
 class MapOptionsTests(unittest.TestCase):
+    def test_treasure_markers_cover_gold_rooms_without_corridor_chests(self):
+        model=MapEngine(37)
+        self.assertEqual(len(model.treasure_rooms),9)
+        centers={(room['x'],room['y']) for room in model.treasure_rooms}
+        self.assertIn((17.54,31.05),centers)
+        self.assertNotIn((47.54,62.92),centers)
+
+    def test_player_trails_are_separate_colored_layers_and_do_not_cover_planned_routes(self):
+        model=MapEngine(37)
+        options=dict(size=(650,650),goal='none',icons=dict(keys=False,eggs=False,trials=False,chests=False))
+        trails=[dict(color='#ff82cb',segments=[[(10,10),(80,80)]])]
+        plain=model.render(**options)
+        with_trails=model.render(**options,trails=trails)
+        self.assertNotEqual(plain.tobytes(),with_trails.tobytes())
+        self.assertGreater(list(with_trails.get_flattened_data()).count((255,130,203)),100)
+        planned={**options,'goal':'keys'}
+        before=list(model.render(**planned).get_flattened_data())
+        after=list(model.render(**planned,trails=trails).get_flattened_data())
+        for color in ((255,177,47),(114,107,255)):
+            self.assertEqual(before.count(color),after.count(color),'Planned routes stay above the thin trails')
+
     def test_exit_preference_applies_to_both_entrances(self):
         model=MapEngine(39)
         for start in (0,1):
@@ -39,8 +60,8 @@ class MapOptionsTests(unittest.TestCase):
         for entrance in (0,1):
             self.assertTrue(both.tobytes()!=model.render(entrance=entrance,**options).tobytes(),'Both entrance routes must remain visible')
         pixels=list(both.get_flattened_data())
-        self.assertGreater(pixels.count((255,155,67)),500)
-        self.assertGreater(pixels.count((101,181,255)),500)
+        self.assertGreater(pixels.count((255,177,47)),500)
+        self.assertGreater(pixels.count((114,107,255)),500)
 
     def test_unconfirmed_trials_are_hidden_unless_requested(self):
         model=MapEngine(40)

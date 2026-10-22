@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-22
+
+### Added
+
+- Optional player-colored trails, stored locally with at most 600 samples per
+  player and three players. Trails break across exits, gaps and jumps, and reset
+  for each navigation session or shared layout revision.
+- Shop wallet capture using the coin-balance area, separate from other currencies
+  and item prices.
+- Automatic party rejoin after Update & restart, with a short-lived,
+  Windows-encrypted handoff that preserves identity and host role. This applies
+  to updates initiated from this version onward; older versions require rejoining.
+
+### Changed
+
+- Planned routes use thicker outlined amber/indigo lines, distinct from player
+  trails. Portals have larger fixed-size symbols and readable labels.
+- Treasure-room icons show the gold rooms used by room routing, omitting corridor
+  chest locations.
+
+### Fixed
+
+- Shared layouts no longer establish local dungeon presence. Outdoors or before
+  local confirmation, the overlay shows only a compact shared-layout status.
+- Outdoor observations stop position sharing and clear the player's relay marker.
+- Capturing Inventory or Shop during an active run refreshes the wallet while
+  preserving the original run start, result draft and tickets.
+
 ## [0.3.9] - 2026-10-22
 
 ### Fixed
@@ -175,7 +203,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial public release with run tracking, local map-pack setup, party navigation,
   tutorial, update checks and map controls.
 
-[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.9...HEAD
+[Unreleased]: https://github.com/CoreosG/aniimo-tracker/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.9...v0.4.0
 [0.3.9]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/CoreosG/aniimo-tracker/compare/v0.3.6...v0.3.7

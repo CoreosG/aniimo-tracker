@@ -106,11 +106,13 @@ class UpdatesPanel:
             candidate=self.pending_install;self.pending_install=None
             try:
                 self.app.persist_draft()
+                self.app.party.prepare_update()
                 start_update_helper(candidate,sys.executable,os.getpid(),self.info['sha256'])
                 self.restart_pending=True
                 self.announce('Restarting to update…',enabled=False)
                 self.app.after(0,self.app.close)
             except Exception as exc:
+                self.app.party.cancel_update()
                 self.installing=False
                 self.announce('Update failed · try again')
                 self.app.status.set('Update failed · '+str(exc))

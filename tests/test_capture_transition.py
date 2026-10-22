@@ -8,6 +8,46 @@ from app import App
 
 
 class CaptureTransitionTests(unittest.TestCase):
+    def test_shop_coin_balance_uses_wallet_crop_not_other_currency_or_item_prices(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                screenshot=Path(directory)/'screenshots/shop.png'
+                Image.new('RGB',(1920,1080)).save(screenshot)
+                def ocr(path,region=None):
+                    return '6 214 628' if region else 'Loja\n678\n6 214 628\nEquipamento\nBilhete do Caos\n400.0 K\nComprar'
+                with patch('app.recognize',side_effect=ocr):
+                    app.auto_attach(screenshot)
+                    deadline=time.monotonic()+5
+                    while (app.auto_busy or app.pending_ocr) and time.monotonic()<deadline:
+                        app.update();time.sleep(.01)
+                self.assertEqual(app.ledger.active_start()['balance'],6214628)
+                self.assertEqual(app.ledger.summary()['coins'],6214628)
+            finally:app.close()
+
+    def test_inventory_during_active_run_refreshes_wallet_without_replacing_start(self):
+        with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
+            app=App(directory,hotkeys=False)
+            try:
+                app.fields['balance'].set('7000000');app.begin_run(manual=True)
+                active=app.ledger.active_start();tickets=app.ledger.summary()['tickets']
+                app.fields['money'].set('400000');app.fields['points'].set('180')
+                screenshot=Path(directory)/'screenshots/inventory.png'
+                Image.new('RGB',(640,480)).save(screenshot)
+                def ocr(path,region=None):
+                    return 'Inventário\nMochila de Aventura\nCofre' if region is None else '6214.6 K'
+                with patch('app.recognize',side_effect=ocr):
+                    app.auto_attach(screenshot)
+                    deadline=time.monotonic()+5
+                    while (app.auto_busy or app.pending_ocr) and time.monotonic()<deadline:
+                        app.update();time.sleep(.01)
+                self.assertEqual(app.ledger.summary()['coins'],6214600)
+                self.assertEqual(app.ledger.active_start(),active)
+                self.assertEqual(app.ledger.summary()['tickets'],tickets)
+                self.assertEqual(app.fields['money'].get(),'400000')
+                self.assertEqual(app.fields['points'].get(),'180')
+            finally:app.close()
+
     def test_gameplay_capture_starts_without_balance_during_map_only(self):
         with tempfile.TemporaryDirectory() as directory,patch('sanctum_panel.game_is_foreground',return_value=False):
             app=App(directory,hotkeys=False)

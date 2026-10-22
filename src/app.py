@@ -954,9 +954,6 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 self.status.set('The run changed while reading this screenshot. Capture it again if needed.')
                 continue
             if kind in ('money','points','balance'):
-                if kind=='balance' and self.ledger.active_start():
-                    self.status.set('Your run is already active. Capture loot and points when it finishes.')
-                    continue
                 self.attach(kind,path,full_text=text if kind in ('money','points') else None)
             elif kind=='map':
                 panel=self.sanctum
@@ -1007,7 +1004,11 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
                 self.status.set(f'{kind.capitalize()} value read · review before saving')
                 if kind == 'balance':
                     self.balance_approximate = bool(re.search(r'[KkMmBb]', text))
-                    self.begin_run()
+                    if self.ledger.active_start():
+                        self.ledger.correct_stats(coins=value,approximate=self.balance_approximate,reason='Captured wallet balance during run')
+                        self.persist_draft();self.refresh()
+                        self.status.set('Wallet balance refreshed · current run unchanged')
+                    else:self.begin_run()
             elif error:
                 self.status.set(f'OCR unavailable: {error[:130]} · enter the value manually')
             else:
@@ -1499,6 +1500,7 @@ All data is in %LOCALAPPDATA%\\AniimoTracker. Back up that folder (tracker.db an
         panel.config.pop('minimap_region',None)
         panel.generation+=1;panel.context_serial+=1
         panel.session.map_confirmed=False
+        panel.session.inside_dungeon=False
         panel.map_open=False;panel.map_rescan_pending=False
         panel.player=None;panel.position_time=0;panel.overlay_dirty=True
         panel.config.update(map_confirmed=False,player=None,reading={})

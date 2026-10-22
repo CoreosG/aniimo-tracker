@@ -9,6 +9,7 @@ from party_client import PartyClient
 from party_protocol import DEFAULT_SERVER, evidence_score, server_url, username
 from map_catalog import DIFFICULTIES, layouts_for
 from i18n import tr
+from player_trails import PlayerTrails
 
 ERRORS = {'party_full':'Party is full (3 players).', 'party_not_found':'Party not found. Check the code and server.',
           'session_expired':'Party session expired. Join again.', 'server_full':'Server is full. Try again later.',
@@ -38,6 +39,7 @@ class PartyPanel:
         self.done_epoch = 0; self.pending_reset = None; self.last_roster = None
         self.marker_state=None;self.last_locale=None
         self.run_epoch=None;self.pending_context=None;self.notice_pending=None
+        self.trails=PlayerTrails()
         canvas=tk.Canvas(tab,bg='#0d1421',highlightthickness=0)
         scrollbar=ttk.Scrollbar(tab,orient='vertical',command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set);scrollbar.pack(side='right',fill='y');canvas.pack(side='left',fill='both',expand=True)
@@ -88,6 +90,25 @@ class PartyPanel:
         ttk.Label(shell,text='Only coordinates and map evidence are shared. Screenshots, OCR, loot and run history stay on your PC.',
                   style='Muted.TLabel',wraplength=700).pack(anchor='w')
         self.server_changed();self.controls()
+        self.resume_tick=self.app.after(1000,self.resume_after_update)
+
+    def prepare_update(self):
+        if self.connected:return self.client.prepare_update(self.app.data_dir/'party-update.bin')
+        return False
+
+    def cancel_update(self):
+        self.client.preserve_on_close=False
+        try:(self.app.data_dir/'party-update.bin').unlink(missing_ok=True)
+        except OSError:pass
+
+    def resume_after_update(self):
+        from party_handoff import consume
+        session=consume(self.app.data_dir/'party-update.bin')
+        if not session or self.connecting:return
+        try:
+            self.client.start(session['address'],self.saved_name,resume=session)
+            self.connecting=True;self.status.set('Rejoining party after update…');self.controls()
+        except (ValueError,KeyError,TypeError,AttributeError):self.status.set('Party session expired · join again with the code')
 
     def server_changed(self):
         self.server_entry.configure(state='normal' if self.mode.get()=='custom' and not self.connecting else 'disabled')
@@ -254,7 +275,8 @@ class PartyPanel:
             panel.overlay_dirty=True;self.controls()
             if self.app.tabs.select()==str(self.app.sanctum_tab):panel.paint()
         self.update_navigation()
-        if not self.state:return
+        if not self.state:
+            self.update_trails();return
         state=self.state
         if self.notice_pending and state['layout'] is not None:
             active=self.app.ledger.active_start()
@@ -267,7 +289,8 @@ class PartyPanel:
         if marker_state!=self.marker_state:
             self.marker_state=marker_state;panel.overlay_dirty=True
             if self.app.tabs.select()==str(self.app.sanctum_tab):panel.paint()
-        if not self.connected:return
+        if not self.connected:
+            self.update_trails();return
         ready=self.pending_reset is None and state['epoch']>self.done_epoch
         if ready and panel.session.watching:
             if panel.difficulty.get()!=state['difficulty']:
@@ -278,6 +301,7 @@ class PartyPanel:
                 panel.session.confirm_map();panel.accept_layout(state['layout'],{})
                 panel.map_feedback=f'{state["difficulty"]} {state["layout"]} · Party map'
                 panel.overlay_dirty=True
+        self.update_trails()
         if now<self.next_publish:return
         self.next_publish=now+.75
         update=dict(type='update',epoch=state['epoch'])
@@ -286,7 +310,7 @@ class PartyPanel:
         if self.observation and state['confidence']>=self.observation['confidence']:self.observation=None
         if ready and self.observation and self.observation['epoch']==state['epoch']:
             update['evidence']={k:self.observation[k] for k in ('layout','confidence')}
-        if ready and panel.session.watching and panel.engine and panel.engine.layout==state['layout']:
+        if ready and panel.session.can_navigate and not panel.outdoors and panel.engine and panel.engine.layout==state['layout']:
             if panel.player and panel.position_time and now-panel.position_time<2 and panel.position_time!=self.last_position:
                 point=list(panel.player)
                 if all(math.isfinite(n) and 0<=n<=100 for n in point):
@@ -316,10 +340,36 @@ class PartyPanel:
             result.append(dict(position=member['position'],name=member['username'],color=member['color'],live=self.connected and member['online'] and age<3))
         return result
 
+    def update_trails(self):
+        panel=self.app.sanctum;now=time.monotonic();state=self.state
+        if not panel.player_trails.get() or not panel.session.watching or not panel.engine:
+            self.trails.reset(None);return
+        shared=state and panel.engine.layout==state['layout'] and panel.difficulty.get()==state['difficulty']
+        context=(panel.session.context_id,panel.difficulty.get(),panel.engine.layout,
+                 (state['code'],state['epoch'],state['revision']) if shared else None)
+        changed=self.trails.reset(context)
+        members=state['members'] if shared else []
+        own=next((m for m in members if m['id']==self.identity),None)
+        identity=self.identity if own else 'local'
+        color=own['color'] if own else '#3df5ff'
+        point=panel.player if panel.session.can_navigate and not panel.outdoors and panel.position_time and now-panel.position_time<2 else None
+        changed=self.trails.observe(identity,color,point,now) or changed
+        identities={identity}
+        for member in members:
+            if member['id']==identity:continue
+            identities.add(member['id'])
+            point=member['position'] if self.connected and member['online'] and member['age'] is not None and member['age']+now-self.received_at<3 else None
+            changed=self.trails.observe(member['id'],member['color'],point,now) or changed
+        self.trails.retain(identities)
+        if changed:panel.overlay_dirty=True
+
     def own_marker(self):
         color=next((p['color'] for p in self.state['members'] if p['id']==self.identity), '#3df5ff') if self.state else '#3df5ff'
         panel=self.app.sanctum
         matching=self.state and panel.engine and panel.engine.layout==self.state['layout'] and panel.difficulty.get()==self.state['difficulty']
-        return dict(player_name=self.saved_name if self.state else None,player_color=color,teammates=self.markers() if matching else [])
+        return dict(player_name=self.saved_name if self.state else None,player_color=color,teammates=self.markers() if matching else [],
+                    trails=self.trails.paths() if panel.player_trails.get() else [])
 
-    def close(self):self.client.close()
+    def close(self):
+        self.app.after_cancel(self.resume_tick)
+        self.client.close()

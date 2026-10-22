@@ -26,7 +26,7 @@
 
 | In the game | Press | What happens |
 | :--- | :---: | :--- |
-| Start run | **Ctrl + Shift + F8** | Start a run; reads your balance if Inventory is open |
+| Start run | **Ctrl + Shift + F8** | Start a run; reads your balance from Inventory or Shop |
 | Loot result | **Ctrl + Shift + F8** | Record the extracted loot value |
 | Egg Heist result | **Ctrl + Shift + F8** | Read points gained or lost |
 | Results ready | **Ctrl + Shift + F9** | Save the run; loot is optional |
@@ -66,11 +66,15 @@ These are anonymized tutorial examples. Original player screenshots are not dist
 | Edit historical balance checkpoints to fix outliers | Three-player parties with shared layouts and positions |
 | Keep screenshots for the latest 30 runs, or choose a limit | Movable, click-through overlay with live display previews |
 
-**Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory captures record your wallet after sales and shopping. Failed runs affect progression but stay out of the successful-run points average.
+**Loot value and wallet balance are separate.** Unsold items do not add cash. Inventory or Shop captures record your wallet after sales and shopping, including during an active run without changing its original start. Failed runs affect progression but stay out of the successful-run points average.
 
-### New in 0.3.2
+**Player trails** can be toggled in **Map & routes → Icons**. Thin paths use each player's marker color; thicker outlined routes remain distinct. Treasure icons show gold rooms, excluding corridor chests. A shared layout stays in the compact status bar until your own screen confirms you are inside the dungeon.
+
+### Updates and game-window capture
 
 Update directly from the tracker with **Update & restart**, available in the top banner and **Settings → Storage & updates**. Downloads and replacement require your click. Automatic checks run at startup and every 30 minutes; source runs keep the browser-download option.
+
+Updates initiated from **0.4.0 onward** can resume the same party within the relay's 60-second reconnect grace. The initial upgrade from an older version requires rejoining once.
 
 Capture follows the Aniimo window's game area as it moves or resizes, and the overlay stays inside it. **Settings → General → Game capture** offers automatic or explicit game-window selection and a manual entire-monitor fallback. Default portal recognition covers tested 720p, 1080p and 4K cases; keep the game visible and recalibrate custom markers after resolution changes when needed. See [capture setup and limits](docs/USER_GUIDE.md#game-window-capture).
 

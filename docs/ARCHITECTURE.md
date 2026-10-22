@@ -31,6 +31,13 @@ UI preview rendering is deferred while hidden and refreshed on return. Overlay
 slider previews are coalesced separately from persistence, and ephemeral
 positions do not cause a configuration-file write on every frame.
 
+Shared layout knowledge and local dungeon presence are independent. Only local
+observations authorize dungeon navigation and outgoing positions. An outdoor
+observation clears local presence and publishes a null location. Player trails
+are bounded client-side paths, with no trail history or extra calculation on the
+relay. Explicit update restarts use a single-use DPAPI-protected resume handoff
+and disconnect without sending Leave; ordinary closes retain Leave behavior.
+
 Map libraries retain two recently used models each. Route results live in each
 model's bounded cache, so global cache keys cannot prolong an evicted model's
 lifetime. Active callers may keep their current model even after library eviction.
